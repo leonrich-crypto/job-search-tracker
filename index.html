@@ -136,6 +136,9 @@
     expandedId:null,
     loadError:null,
     syncError:null,
+    pendingSyncCount:0,
+    search:'',
+    sortBy:'newest',
     assist:{link:'', resume:'', resumeFileName:'', parsing:false, dragOver:false, loading:false, error:null, result:null}
   };
 
@@ -164,6 +167,44 @@
     var n = parseInt(level)||0, s='';
     for(var i=1;i<=5;i++){ s += (i<=n ? '\u25CF' : '\u25CB'); }
     return s;
+  }
+  function daysSince(dateStr){
+    if(!dateStr) return null;
+    var d = new Date(dateStr+'T00:00:00');
+    if(isNaN(d.getTime())) return null;
+    return Math.floor((Date.now()-d.getTime())/86400000);
+  }
+  function isStale(a){
+    if(a.status!=='Applied') return false;
+    if(a.interviewStage && a.interviewStage.trim()) return false;
+    var d = daysSince(a.dateApplied);
+    return d!=null && d>=21;
+  }
+  function csvEscape(v){
+    v = (v==null?'':String(v));
+    if(/[",\n]/.test(v)) return '"'+v.replace(/"/g,'""')+'"';
+    return v;
+  }
+  function exportCsv(){
+    var headers = ['Company name','Role / Type of Engineering','Rotational?','Program Length','Location','URL',
+      'My Interest Level','Interview Stage','Decision','Salary / Comp','Application Deadline','Referral',
+      'Date Applied','Job Number','Notes'];
+    var lines = [headers.map(csvEscape).join(',')];
+    state.applications.forEach(function(a){
+      lines.push([a.company,a.role,a.rotational,a.programLength,a.location,a.link,a.interestLevel,
+        a.interviewStage,a.status,a.comp,a.deadline,a.referral,a.dateApplied,a.jobNumber,a.notes]
+        .map(csvEscape).join(','));
+    });
+    var blob = new Blob([lines.join('\n')], {type:'text/csv;charset=utf-8;'});
+    var url = URL.createObjectURL(blob);
+    var link = document.createElement('a');
+    link.href = url; link.download = 'job-search-tracker-'+todayISO()+'.csv';
+    document.body.appendChild(link); link.click(); document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }
+  function updateSyncIndicator(){
+    var el = document.getElementById('jt-sync-indicator');
+    if(el) el.textContent = state.pendingSyncCount>0 ? 'SYNCING\u2026' : '';
   }
 
   var SUPABASE_URL = 'https://vgjoawyjtclxewmgwvxe.supabase.co';
@@ -221,23 +262,29 @@
     render();
   }
   async function saveApplicationRemote(app){
+    state.pendingSyncCount++; updateSyncIndicator();
     try{
       var res = await sb.from('job_tracker_applications').upsert(toDbRow(app));
       if(res.error){ console.error('save failed', res.error); state.syncError='Could not save to the database. Your last change may not have been saved.'; render(); }
     }catch(e){ console.error('save failed', e); state.syncError='Could not save to the database. Your last change may not have been saved.'; render(); }
+    finally{ state.pendingSyncCount--; updateSyncIndicator(); }
   }
   async function deleteApplicationRemote(id){
+    state.pendingSyncCount++; updateSyncIndicator();
     try{
       var res = await sb.from('job_tracker_applications').delete().eq('id', id);
       if(res.error){ console.error('delete failed', res.error); state.syncError='Could not delete that entry from the database.'; render(); }
     }catch(e){ console.error('delete failed', e); state.syncError='Could not delete that entry from the database.'; render(); }
+    finally{ state.pendingSyncCount--; updateSyncIndicator(); }
   }
   async function persistResume(text, fileName){
     if(!sb) return;
+    state.pendingSyncCount++; updateSyncIndicator();
     try{
       var res = await sb.from('job_tracker_resume').upsert({id:1, resume_text:text, resume_filename:fileName||'', updated_at:new Date().toISOString()});
       if(res.error) console.error('resume save failed', res.error);
     }catch(e){ console.error('resume save failed', e); }
+    finally{ state.pendingSyncCount--; updateSyncIndicator(); }
   }
   async function extractPdfText(file){
     if(!window.pdfjsLib){ throw new Error('PDF reader did not load. Check your connection and try again.'); }
@@ -296,7 +343,8 @@
   function renderHeader(){
     return '<div id="jt-header"><div><div class="eyebrow">JOB-SEARCH / TRACKING SYSTEM</div><h1>Application Log</h1>'+
       '<div style="color:var(--ink-soft);font-size:13px;margin-top:4px;">Full-time search &middot; pipeline &amp; status tracking</div></div>'+
-      '<div class="stamp-date">REV '+new Date().toLocaleDateString('en-US',{month:'short',day:'2-digit',year:'numeric'}).toUpperCase()+'</div></div>';
+      '<div class="stamp-date">REV '+new Date().toLocaleDateString('en-US',{month:'short',day:'2-digit',year:'numeric'}).toUpperCase()+
+      '<div id="jt-sync-indicator" class="mono" style="font-size:10px;color:var(--applied);letter-spacing:1px;margin-top:3px;"></div></div></div>';
   }
 
   function renderTabs(){
@@ -317,6 +365,7 @@
     var offerAmounts = state.applications.filter(function(a){ return a.status==='Offer'; })
       .map(function(a){ return parseAmount(a.comp); }).filter(function(n){ return n!=null; });
     var avgOffer = offerAmounts.length ? Math.round(offerAmounts.reduce(function(a,b){return a+b;},0)/offerAmounts.length) : null;
+    var staleCount = state.applications.filter(isStale).length;
 
     if(total===0){
       return '<div class="empty-state"><h3>No entries in the file yet</h3>'+
@@ -336,6 +385,7 @@
       '<div class="stat-card"><div class="num">'+interviewRate+'%</div><div class="lbl">Reached interview</div></div>'+
       '<div class="stat-card"><div class="num">'+offerRate+'%</div><div class="lbl">Turned into offers</div></div>'+
       '<div class="stat-card"><div class="num">'+(avgOffer!=null ? '$'+avgOffer.toLocaleString() : '&mdash;')+'</div><div class="lbl">Avg offer (parsed)</div></div>'+
+      '<div class="stat-card"'+(staleCount>0?' style="border-color:var(--interview);"':'')+'><div class="num"'+(staleCount>0?' style="color:var(--interview);"':'')+'>'+staleCount+'</div><div class="lbl">No response 21+ days</div></div>'+
       '</div>';
 
     return statCards +
@@ -354,26 +404,51 @@
       return '<button type="button" class="filter-chip'+active+'" data-action="filter-status" data-status="'+s+'">'+label+'</button>';
     }).join('');
 
-    var list = state.applications.filter(function(a){
-      return state.filterStatus==='all' || a.status===state.filterStatus;
-    });
-
     if(state.applications.length===0){
       return '<div class="empty-state"><h3>No entries in the file yet</h3>'+
         '<p>Start logging applications and they will show up here.</p>'+
         '<button type="button" class="btn btn-primary" data-action="new-application">Log an application</button></div>';
     }
 
+    var list = state.applications.filter(function(a){
+      return state.filterStatus==='all' || a.status===state.filterStatus;
+    });
+    var q = (state.search||'').trim().toLowerCase();
+    if(q){
+      list = list.filter(function(a){
+        return (a.company||'').toLowerCase().indexOf(q)>-1 ||
+          (a.role||'').toLowerCase().indexOf(q)>-1 ||
+          (a.location||'').toLowerCase().indexOf(q)>-1 ||
+          (a.notes||'').toLowerCase().indexOf(q)>-1;
+      });
+    }
+    list = list.slice().sort(function(x,y){
+      if(state.sortBy==='company') return (x.company||'').localeCompare(y.company||'');
+      if(state.sortBy==='oldest') return (x.dateApplied||'').localeCompare(y.dateApplied||'');
+      return (y.dateApplied||'').localeCompare(x.dateApplied||'');
+    });
+
     var cards = list.length ? list.map(renderCard).join('') :
-      '<div class="empty-state"><p>No entries with this status.</p></div>';
+      '<div class="empty-state"><p>No entries match your filters.</p></div>';
+
+    var toolbar = '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;">'+
+      '<input type="text" id="jt-search-input" data-scope="ui" data-field="search" value="'+escapeHtml(state.search)+'" '+
+        'placeholder="Search company, role, location, notes..." style="flex:1;min-width:200px;" aria-label="Search applications">'+
+      '<select data-scope="ui" data-field="sortBy" style="width:auto;" aria-label="Sort applications">'+
+        opt('newest', state.sortBy, 'Newest first')+opt('oldest', state.sortBy, 'Oldest first')+opt('company', state.sortBy, 'Company A\u2013Z')+
+      '</select>'+
+      '<button type="button" class="btn" data-action="export-csv">Export CSV</button>'+
+      '</div>';
 
     return '<div class="filters">'+chips+'</div>'+
+      toolbar+
       '<div style="margin-bottom:16px;"><button type="button" class="btn btn-primary" data-action="new-application">+ Log new application</button></div>'+
       cards;
   }
 
   function renderCard(a){
     var deleteLabel = state.pendingDeleteId===a.id ? 'Confirm delete?' : 'Delete';
+    var stale = isStale(a);
     var meta = [];
     if(a.location) meta.push('\uD83D\uDCCD '+escapeHtml(a.location));
     if(a.interviewStage) meta.push('Stage: '+escapeHtml(a.interviewStage));
@@ -409,10 +484,13 @@
       }
     }
 
-    return '<div class="card-index">'+
+    return '<div class="card-index"'+(stale?' style="border-left-color:var(--interview);"':'')+'>'+
       '<div class="top-row"><div><div class="company">'+escapeHtml(a.company||'Untitled')+'</div>'+
       '<div class="role">'+escapeHtml(a.role||'')+(a.role && linkHtml? ' &middot; ':'')+linkHtml+'</div></div>'+
       '<span class="stamp stamp-'+a.status+'">'+a.status+'</span></div>'+
+      (stale ? '<div class="mono" style="font-size:11.5px;color:var(--interview);margin-top:8px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">'+
+        '\u26A0 NO RESPONSE IN '+daysSince(a.dateApplied)+' DAYS'+
+        '<button type="button" class="btn-quiet" style="color:var(--interview);" data-action="mark-ghosted" data-id="'+a.id+'">Mark as ghosted</button></div>' : '')+
       (meta.length ? '<div class="meta">'+meta.join(' &nbsp;&middot;&nbsp; ')+'</div>' : '')+
       (a.notes ? '<div class="notes">'+escapeHtml(a.notes)+'</div>' : '')+
       (materialsHtml ? '<div style="margin-top:10px;">'+materialsHtml+'</div>' : '')+
@@ -431,11 +509,17 @@
     var isEdit = !!state.editingId;
     var materialsNote = (d.tailoredResume || d.coverLetter) ?
       '<div class="section-title">From AI assist</div><p style="font-size:13px;color:var(--ink-soft);">Tailored resume notes and a cover letter from the AI assist tab are attached to this entry and will be saved with it.</p>' : '';
+    var dupWarning = '';
+    if(!isEdit && d.company && d.company.trim()){
+      var dup = state.applications.find(function(x){ return x.company && x.company.trim().toLowerCase()===d.company.trim().toLowerCase(); });
+      if(dup){ dupWarning = '<div class="mono" style="font-size:12.5px;color:var(--interview);margin-top:-8px;margin-bottom:14px;">Already tracking "'+escapeHtml(dup.company)+'" ('+dup.status+'). This will add a second entry.</div>'; }
+    }
 
     return '<form data-form="application">'+
       (state.formError ? '<div class="error-text">'+escapeHtml(state.formError)+'</div>' : '')+
       '<div class="section-title" style="margin-top:0;">The basics</div>'+
       '<div class="field"><label>Company</label><input type="text" data-scope="formDraft" data-field="company" value="'+escapeHtml(d.company)+'" placeholder="Caterpillar" required></div>'+
+      dupWarning+
       '<div class="field-row">'+
         '<div class="field"><label>Role / type of engineering</label><input type="text" data-scope="formDraft" data-field="role" value="'+escapeHtml(d.role)+'" placeholder="Mechanical Engineer I"></div>'+
         '<div class="field"><label>Location</label><input type="text" data-scope="formDraft" data-field="location" value="'+escapeHtml(d.location)+'" placeholder="Peoria, IL"></div>'+
@@ -494,7 +578,7 @@
         '<details style="margin-top:8px;"><summary style="font-size:12.5px;color:var(--ink-soft);cursor:pointer;">Preview extracted text</summary>'+
         '<div class="letter-box" style="max-height:160px;overflow-y:auto;margin-top:8px;">'+escapeHtml(a.resume)+'</div></details>';
     } else {
-      dropZoneHtml = '<div class="'+dropClass+'" id="jt-drop-zone">'+
+      dropZoneHtml = '<div class="'+dropClass+'" id="jt-drop-zone" role="button" tabindex="0" aria-label="Upload resume PDF, click or drag and drop">'+
         '<div style="font-size:14px;">Drag &amp; drop your resume PDF here</div>'+
         '<div style="font-size:12.5px;color:var(--ink-soft);margin-top:4px;">or <span style="text-decoration:underline;">click to browse</span> &mdash; PDF only</div>'+
         '</div>';
@@ -553,6 +637,7 @@
     var banner = state.syncError ? '<div class="error-text mono" style="margin-bottom:12px;padding:10px 14px;border:1px solid var(--rejected);border-radius:4px;display:flex;justify-content:space-between;align-items:center;gap:12px;">'+
       '<span>'+escapeHtml(state.syncError)+'</span><button type="button" class="btn-quiet" data-action="dismiss-sync-error" style="color:var(--rejected);">Dismiss</button></div>' : '';
     root.innerHTML = renderHeader()+renderTabs()+banner+'<div id="jt-content">'+content+'</div>';
+    updateSyncIndicator();
   }
 
   async function runAssist(){
@@ -630,6 +715,16 @@
         state.pendingDeleteId = did; render();
         setTimeout(function(){ if(state.pendingDeleteId===did){ state.pendingDeleteId=null; render(); } }, 4000);
       }
+    } else if(action==='mark-ghosted'){
+      var gid = el.dataset.id;
+      var gidx = state.applications.findIndex(function(x){ return x.id===gid; });
+      if(gidx>-1){
+        state.applications[gidx] = Object.assign({}, state.applications[gidx], {status:'Ghosted'});
+        render();
+        saveApplicationRemote(state.applications[gidx]);
+      }
+    } else if(action==='export-csv'){
+      exportCsv();
     } else if(action==='filter-status'){
       state.filterStatus = el.dataset.status; render();
     } else if(action==='cancel-edit'){
@@ -672,6 +767,22 @@
   document.getElementById('jt-app').addEventListener('input', function(e){
     var t = e.target;
     if(!t.dataset || !t.dataset.field) return;
+    if(t.dataset.scope==='ui' && t.dataset.field==='search'){
+      state.search = t.value;
+      var pos = t.selectionStart;
+      render();
+      var ns = document.getElementById('jt-search-input');
+      if(ns){ ns.focus(); try{ ns.setSelectionRange(pos,pos); }catch(err){} }
+      return;
+    }
+    if(t.dataset.scope==='formDraft' && t.dataset.field==='company' && !state.editingId && state.formDraft){
+      state.formDraft.company = t.value;
+      var cpos = t.selectionStart;
+      render();
+      var nc = document.querySelector('[data-scope="formDraft"][data-field="company"]');
+      if(nc){ nc.focus(); try{ nc.setSelectionRange(cpos,cpos); }catch(err){} }
+      return;
+    }
     if(t.dataset.scope==='formDraft' && state.formDraft){
       state.formDraft[t.dataset.field] = t.value;
     } else if(t.dataset.scope==='assist'){
@@ -689,12 +800,22 @@
       return;
     }
     if(!t.dataset || !t.dataset.field) return;
+    if(t.dataset.scope==='ui' && t.dataset.field==='sortBy'){
+      state.sortBy = t.value; render(); return;
+    }
     if((t.tagName==='SELECT') && t.dataset.scope==='formDraft' && state.formDraft){
       state.formDraft[t.dataset.field] = t.value;
     }
   });
   document.getElementById('jt-app').addEventListener('click', function(e){
     if(e.target.closest('#jt-drop-zone')){
+      var input = document.getElementById('jt-resume-input');
+      if(input) input.click();
+    }
+  });
+  document.getElementById('jt-app').addEventListener('keydown', function(e){
+    if((e.key==='Enter' || e.key===' ') && e.target.id==='jt-drop-zone'){
+      e.preventDefault();
       var input = document.getElementById('jt-resume-input');
       if(input) input.click();
     }
