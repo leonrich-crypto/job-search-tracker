@@ -141,7 +141,8 @@ body{padding:40px 16px;}
     pendingSyncCount:0,
     search:'',
     sortBy:'newest',
-    assist:{link:'', resume:'', resumeFileName:'', parsing:false, dragOver:false, loading:false, error:null, result:null}
+    assist:{link:'', resume:'', resumeFileName:'', parsing:false, dragOver:false, fetching:false, fetchError:null,
+      postingTitle:'', postingText:'', tailoredNotes:'', coverDraft:''}
   };
 
   var resumeSaveTimer = null;
@@ -585,39 +586,28 @@ body{padding:40px 16px;}
         '<div style="font-size:12.5px;color:var(--ink-soft);margin-top:4px;">or <span style="text-decoration:underline;">click to browse</span> &mdash; PDF only</div>'+
         '</div>';
     }
-    var out = '<p style="color:var(--ink-soft);font-size:13.5px;margin-top:0;">Paste a job posting link and drop in your resume PDF. Claude will look up the posting, then rewrite resume bullets and a cover letter using only what is actually in your resume.</p>'+
-      '<div class="field"><label>Job posting link</label><input type="url" data-scope="assist" data-field="link" value="'+escapeHtml(a.link)+'" placeholder="https://company.com/careers/job-id"></div>'+
-      '<div class="field"><label>Your resume (PDF) &mdash; saved automatically</label>'+
+    var out = '<p style="color:var(--ink-soft);font-size:13.5px;margin-top:0;">Pull in the job posting text and keep your resume side by side, then write your own tailored resume notes and cover letter below.</p>'+
+      '<div class="field-row" style="align-items:end;">'+
+        '<div class="field" style="margin-bottom:0;"><label>Job posting link</label><input type="url" data-scope="assist" data-field="link" value="'+escapeHtml(a.link)+'" placeholder="https://company.com/careers/job-id"></div>'+
+        '<button type="button" class="btn btn-primary" data-action="fetch-posting"'+(a.fetching?' disabled':'')+' style="height:36px;">'+(a.fetching? 'Fetching...' : 'Fetch posting text')+'</button>'+
+      '</div>';
+
+    if(a.fetchError){
+      out += '<div class="error-text" style="margin-top:10px;">'+escapeHtml(a.fetchError)+'</div>';
+    }
+
+    out += '<div class="field" style="margin-top:16px;"><label>Job description'+(a.postingTitle? ' \u2014 '+escapeHtml(a.postingTitle):'')+' (auto-fetched, or paste/edit manually)</label>'+
+      '<textarea data-scope="assist" data-field="postingText" rows="8" placeholder="Fetched text will appear here, or paste the job description yourself...">'+escapeHtml(a.postingText)+'</textarea></div>';
+
+    out += '<div class="field"><label>Your resume (PDF, for reference) &mdash; saved automatically</label>'+
       '<input type="file" id="jt-resume-input" accept="application/pdf,.pdf" style="display:none;">'+
-      dropZoneHtml+'</div>'+
-      '<button type="button" class="btn btn-primary" data-action="run-assist"'+(a.loading?' disabled':'')+'>'+(a.loading? 'Working on it...' : 'Analyze &amp; tailor')+'</button>';
+      dropZoneHtml+'</div>';
 
-    if(a.error){
-      out += '<div class="error-text" style="margin-top:14px;">'+escapeHtml(a.error)+'</div>';
-    }
+    out += '<div class="section-title">Write your own tailored materials</div>'+
+      '<div class="field"><label>Tailored resume notes</label><textarea data-scope="assist" data-field="tailoredNotes" rows="5" placeholder="Bullet points or notes on how to angle your resume for this role...">'+escapeHtml(a.tailoredNotes)+'</textarea></div>'+
+      '<div class="field"><label>Cover letter</label><textarea data-scope="assist" data-field="coverDraft" rows="8" placeholder="Draft your cover letter here, referencing the posting text above...">'+escapeHtml(a.coverDraft)+'</textarea></div>'+
+      '<button type="button" class="btn btn-primary" data-action="save-as-application">Save as new application \u2192</button>';
 
-    if(a.result){
-      var r = a.result;
-      out += '<div class="section-title">Posting summary</div>';
-      out += '<p style="margin:0 0 4px;"><strong>'+escapeHtml(r.role||'Role not identified')+'</strong>'+(r.company? ' at '+escapeHtml(r.company):'')+(r.location? ' \u2014 '+escapeHtml(r.location):'')+'</p>';
-      if(r.notice){ out += '<p style="font-size:13px;color:var(--ink-soft);">'+escapeHtml(r.notice)+'</p>'; }
-      if(r.keyRequirements && r.keyRequirements.length){
-        out += '<ul style="font-size:13.5px;padding-left:20px;">'+r.keyRequirements.map(function(k){ return '<li>'+escapeHtml(k)+'</li>'; }).join('')+'</ul>';
-      }
-      if(r.tailoredSummary){
-        out += '<div class="section-title">Tailored summary <button type="button" class="btn-quiet" data-action="copy-text" data-copy-src="assist-summary" style="margin-left:8px;">Copy</button></div>'+
-          '<div class="letter-box">'+escapeHtml(r.tailoredSummary)+'</div>';
-      }
-      if(r.tailoredBullets && r.tailoredBullets.length){
-        out += '<div class="section-title">Tailored resume bullets <button type="button" class="btn-quiet" data-action="copy-text" data-copy-src="assist-bullets" style="margin-left:8px;">Copy all</button></div>'+
-          '<ul style="font-size:13.5px;padding-left:20px;">'+r.tailoredBullets.map(function(b){ return '<li style="margin-bottom:4px;">'+escapeHtml(b)+'</li>'; }).join('')+'</ul>';
-      }
-      if(r.coverLetter){
-        out += '<div class="section-title">Cover letter <button type="button" class="btn-quiet" data-action="copy-text" data-copy-src="assist-cover" style="margin-left:8px;">Copy</button></div>'+
-          '<div class="letter-box">'+escapeHtml(r.coverLetter)+'</div>';
-      }
-      out += '<div style="margin-top:16px;"><button type="button" class="btn btn-primary" data-action="save-as-application">Save as new application \u2192</button></div>';
-    }
     return out;
   }
 
@@ -642,48 +632,26 @@ body{padding:40px 16px;}
     updateSyncIndicator();
   }
 
-  async function runAssist(){
+  async function fetchPosting(){
     var a = state.assist;
-    if(!a.link || !a.link.trim()){ a.error='Paste a job posting link first.'; render(); return; }
-    if(!a.resume || !a.resume.trim()){ a.error='Drop in your resume PDF first.'; render(); return; }
-    a.loading = true; a.error = null; a.result = null; render();
-
-    var prompt = 'You are helping a job seeker tailor application materials.\n\n'+
-      'Job posting URL: '+a.link.trim()+'\n\n'+
-      'Step 1: Use web search to find this exact job posting (or the closest matching indexed version) and identify the company name, job title, location, and 5-8 key requirements or qualifications from the posting.\n\n'+
-      'Step 2: Here is the candidate resume:\n"""\n'+a.resume.trim()+'\n"""\n\n'+
-      'Using ONLY facts, skills, and experience that actually appear in the resume above (never invent experience, skills, titles, or metrics the candidate does not have), write: a tailored 2-3 sentence professional summary aligned to this role; 5-8 tailored resume bullet points phrased with language/keywords from the posting where the candidate real experience supports it; and a complete ready-to-send cover letter (3-4 short paragraphs, professional but not stiff, addressed generically like "Dear Hiring Team" unless a hiring manager name was found).\n\n'+
-      'Respond with ONLY a raw JSON object, no markdown fences, no preamble, in exactly this shape: '+
-      '{"company":"","role":"","location":"","keyRequirements":["..."],"tailoredSummary":"","tailoredBullets":["..."],"coverLetter":""}\n\n'+
-      'If you cannot access or find the posting content, still return that exact JSON shape: fill company/role/location with your best guess from the URL or leave empty, set keyRequirements to an empty array, still write tailoredSummary/tailoredBullets/coverLetter based on general best practice for the resume as given, and add a "notice" field explaining the posting could not be retrieved.';
-
+    if(!a.link || !a.link.trim()){ a.fetchError='Paste a job posting link first.'; render(); return; }
+    a.fetching = true; a.fetchError = null; render();
     try{
-      var response = await fetch('https://api.anthropic.com/v1/messages', {
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({
-          model:'claude-sonnet-4-6',
-          max_tokens:1000,
-          messages:[{role:'user', content: prompt}],
-          tools:[{type:'web_search_20250305', name:'web_search'}]
-        })
-      });
-      var data = await response.json();
-      if(data.error){ throw new Error(data.error.message || 'API error'); }
-      var textBlocks = (data.content||[]).filter(function(b){ return b.type==='text'; }).map(function(b){ return b.text; }).join('\n').trim();
-      var cleaned = textBlocks.replace(/^```json\s*/i,'').replace(/^```\s*/,'').replace(/```\s*$/,'').trim();
-      var parsed;
-      try{ parsed = JSON.parse(cleaned); }
-      catch(e){
-        var match = cleaned.match(/\{[\s\S]*\}/);
-        if(match){ parsed = JSON.parse(match[0]); } else { throw new Error('Could not read a response back. Try again.'); }
+      if(!sb) throw new Error('Database client did not load. Reload the page.');
+      var res = await sb.functions.invoke('fetch-posting', { body: { url: a.link.trim() } });
+      if(res.error) throw res.error;
+      var data = res.data || {};
+      if(data.error){
+        a.fetchError = data.error;
+        if(data.title) a.postingTitle = data.title;
+      } else {
+        a.postingTitle = data.title || '';
+        a.postingText = data.text || '';
       }
-      a.result = parsed;
     }catch(err){
-      a.error = (err && err.message) ? err.message : 'Something went wrong reaching the posting. Try again.';
+      a.fetchError = (err && err.message) ? err.message : 'Could not reach that page. Paste the description manually instead.';
     }finally{
-      a.loading = false;
-      render();
+      a.fetching = false; render();
     }
   }
 
@@ -735,29 +703,22 @@ body{padding:40px 16px;}
       var tid = el.dataset.id;
       state.expandedId = state.expandedId===tid ? null : tid; render();
     } else if(action==='remove-resume'){
-      state.assist.resume=''; state.assist.resumeFileName=''; state.assist.error=null;
+      state.assist.resume=''; state.assist.resumeFileName=''; state.assist.fetchError=null;
       persistResume('', '');
       render();
-    } else if(action==='run-assist'){
-      runAssist();
+    } else if(action==='fetch-posting'){
+      fetchPosting();
     } else if(action==='save-as-application'){
-      var r = state.assist.result;
-      if(!r) return;
-      var bullets = (r.tailoredBullets||[]).map(function(b){ return '- '+b; }).join('\n');
-      var summaryBlock = r.tailoredSummary ? ('Summary: '+r.tailoredSummary+'\n\n') : '';
+      var a = state.assist;
       state.editingId = null; state.formError=null;
       state.formDraft = Object.assign(blankDraft(), {
-        company: r.company||'', role: r.role||'', location: r.location||'',
-        link: state.assist.link, status:'Applied', dateApplied: todayISO(),
-        tailoredResume: summaryBlock + bullets, coverLetter: r.coverLetter||''
+        link: a.link, status:'Applied', dateApplied: todayISO(),
+        tailoredResume: a.tailoredNotes||'', coverLetter: a.coverDraft||''
       });
       state.tab='add'; render();
     } else if(action==='copy-text'){
       var src = el.dataset.copySrc, text='';
-      if(src==='assist-cover') text = (state.assist.result && state.assist.result.coverLetter) || '';
-      else if(src==='assist-summary') text = (state.assist.result && state.assist.result.tailoredSummary) || '';
-      else if(src==='assist-bullets') text = state.assist.result ? (state.assist.result.tailoredBullets||[]).map(function(b){ return '- '+b; }).join('\n') : '';
-      else if(src && src.indexOf('app-resume:')===0){ var aid=src.split(':')[1]; var app1=state.applications.find(function(x){return x.id===aid;}); text = app1 ? (app1.tailoredResume||'') : ''; }
+      if(src && src.indexOf('app-resume:')===0){ var aid=src.split(':')[1]; var app1=state.applications.find(function(x){return x.id===aid;}); text = app1 ? (app1.tailoredResume||'') : ''; }
       else if(src && src.indexOf('app-cover:')===0){ var aid2=src.split(':')[1]; var app2=state.applications.find(function(x){return x.id===aid2;}); text = app2 ? (app2.coverLetter||'') : ''; }
       var orig = el.textContent;
       navigator.clipboard.writeText(text).then(function(){
