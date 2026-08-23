@@ -1,0 +1,749 @@
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+:root{
+  --paper:#0A0E16;
+  --paper-card:#111826;
+  --paper-dark:#1A2336;
+  --ink:#E7EDF7;
+  --ink-soft:#7C8BAA;
+  --rule:#26324A;
+  --applied:#3B82F6;
+  --interview:#F0A93B;
+  --offer:#22C58B;
+  --rejected:#EF5350;
+  --ghosted:#647089;
+}
+*{box-sizing:border-box;}
+#jt-app{font-family:'Inter',sans-serif;color:var(--ink);background:var(--paper);
+  background-image:
+    linear-gradient(rgba(59,130,246,0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(59,130,246,0.07) 1px, transparent 1px);
+  background-size:26px 26px;
+  padding:28px 24px 60px;border-radius:10px;max-width:920px;margin:0 auto;}
+#jt-app h1,#jt-app h2,#jt-app h3{font-family:'JetBrains Mono',monospace;font-weight:600;letter-spacing:0.2px;}
+#jt-app .mono{font-family:'JetBrains Mono',monospace;}
+#jt-app a{color:var(--applied);}
+#jt-app button{font-family:'Inter',sans-serif;cursor:pointer;}
+#jt-app input,#jt-app select,#jt-app textarea{font-family:'Inter',sans-serif;font-size:14px;
+  background:#0D1420;border:1px solid var(--rule);border-radius:4px;padding:8px 10px;color:var(--ink);width:100%;}
+#jt-app input::placeholder,#jt-app textarea::placeholder{color:#48577A;}
+#jt-app input:focus,#jt-app select:focus,#jt-app textarea:focus{outline:1.5px solid var(--applied);outline-offset:1px;border-color:var(--applied);}
+#jt-app .btn{border:1px solid var(--rule);background:var(--paper-dark);color:var(--ink);border-radius:4px;padding:9px 16px;
+  font-size:13.5px;font-weight:500;letter-spacing:0.2px;}
+#jt-app .btn:hover{border-color:var(--applied);}
+#jt-app .btn-primary{background:var(--applied);color:#08101F;border-color:var(--applied);font-weight:600;}
+#jt-app .btn-primary:hover{background:#5B96F8;}
+#jt-app .btn-danger{border-color:var(--rejected);color:var(--rejected);background:transparent;}
+#jt-app .btn-danger:hover{background:var(--rejected);color:#08101F;}
+#jt-app .btn-quiet{border:none;background:transparent;color:var(--ink-soft);text-decoration:underline;padding:4px 2px;font-size:13px;}
+#jt-app .btn-quiet:hover{color:var(--applied);}
+#jt-header{position:relative;display:flex;justify-content:space-between;align-items:flex-end;
+  border-bottom:1px solid var(--rule);padding:0 0 16px;margin-bottom:0;}
+#jt-header::before{content:'';position:absolute;left:0;top:-6px;width:16px;height:16px;
+  border-left:2px solid var(--applied);border-top:2px solid var(--applied);}
+#jt-header::after{content:'';position:absolute;right:0;top:-6px;width:16px;height:16px;
+  border-right:2px solid var(--applied);border-top:2px solid var(--applied);}
+#jt-header h1{font-size:22px;margin:0;text-transform:uppercase;letter-spacing:1px;}
+#jt-header .eyebrow{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--applied);letter-spacing:2px;margin-bottom:4px;}
+#jt-header .stamp-date{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--ink-soft);text-align:right;}
+#jt-tabs{display:flex;gap:2px;margin-top:16px;background:var(--paper-dark);padding:3px;border-radius:6px;width:fit-content;}
+#jt-tabs .tab{padding:8px 16px;border:none;border-radius:4px;background:transparent;color:var(--ink-soft);
+  font-family:'JetBrains Mono',monospace;font-size:12.5px;letter-spacing:0.3px;}
+#jt-tabs .tab.active{background:var(--applied);color:#08101F;font-weight:600;}
+#jt-content{border:1px solid var(--rule);background:var(--paper-card);border-radius:8px;padding:24px;margin-top:14px;min-height:340px;}
+.stamp{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:1px;
+  padding:3px 9px;border:1px solid currentColor;border-radius:3px;text-transform:uppercase;white-space:nowrap;background:rgba(255,255,255,0.03);}
+.stamp-Applied{color:var(--applied);}
+.stamp-Interview{color:var(--interview);}
+.stamp-Offer{color:var(--offer);}
+.stamp-Rejected{color:var(--rejected);}
+.stamp-Ghosted{color:var(--ghosted);}
+.swatch{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px;}
+.swatch-Applied{background:var(--applied);}
+.swatch-Interview{background:var(--interview);}
+.swatch-Offer{background:var(--offer);}
+.swatch-Rejected{background:var(--rejected);}
+.swatch-Ghosted{background:var(--ghosted);}
+.donut-wrap{display:flex;gap:36px;align-items:center;flex-wrap:wrap;margin-bottom:24px;}
+.donut{width:190px;height:190px;border-radius:50%;position:relative;flex-shrink:0;}
+.donut-hole{position:absolute;top:24px;left:24px;width:142px;height:142px;border-radius:50%;
+  background:var(--paper-card);display:flex;flex-direction:column;align-items:center;justify-content:center;}
+.donut-hole .count{font-family:'JetBrains Mono',monospace;font-size:34px;font-weight:600;line-height:1;}
+.donut-hole .label{font-size:10.5px;color:var(--ink-soft);letter-spacing:1.5px;margin-top:4px;}
+.legend{display:flex;flex-direction:column;gap:8px;flex:1;min-width:200px;}
+.legend-row{display:flex;justify-content:space-between;font-size:14px;border-bottom:1px solid var(--rule);padding-bottom:6px;}
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:8px;}
+.stat-card{background:var(--paper-dark);border:1px solid var(--rule);border-radius:6px;padding:12px 14px;}
+.stat-card .num{font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--applied);}
+.stat-card .lbl{font-size:12px;color:var(--ink-soft);margin-top:2px;}
+.filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px;}
+.filter-chip{border:1px solid var(--rule);border-radius:4px;padding:6px 14px;font-size:12.5px;background:transparent;
+  color:var(--ink-soft);font-family:'JetBrains Mono',monospace;}
+.filter-chip.active{border-color:var(--applied);color:var(--applied);background:rgba(59,130,246,0.1);font-weight:600;}
+.card-index{background:var(--paper-dark);border:1px solid var(--rule);border-left:3px solid var(--applied);border-radius:4px;
+  padding:16px 18px;margin-bottom:14px;position:relative;}
+.card-index .top-row{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;}
+.card-index .company{font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:600;}
+.card-index .role{color:var(--ink-soft);font-size:13.5px;margin-top:2px;}
+.card-index .meta{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;color:var(--ink-soft);margin-top:10px;font-family:'JetBrains Mono',monospace;}
+.card-index .notes{font-size:13.5px;margin-top:10px;color:var(--ink);}
+.card-index .actions{display:flex;gap:14px;margin-top:12px;}
+.letter-box{background:#080D16;border:1px solid var(--rule);border-radius:4px;padding:18px 20px;
+  font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1.75;white-space:pre-wrap;color:#C9D6EC;}
+.drop-zone{border:2px dashed var(--rule);border-radius:6px;padding:26px 16px;text-align:center;
+  cursor:pointer;background:#0D1420;}
+.drop-zone:hover{border-color:var(--applied);}
+.drop-zone.drag-over{border-color:var(--applied);background:rgba(59,130,246,0.08);}
+.resume-loaded{display:flex;justify-content:space-between;align-items:center;background:#0D1420;
+  border:1px solid var(--rule);border-radius:6px;padding:12px 16px;font-size:14px;flex-wrap:wrap;gap:8px;}
+.field{margin-bottom:14px;}
+.field label{display:block;font-size:11.5px;color:var(--ink-soft);margin-bottom:5px;letter-spacing:0.4px;
+  font-family:'JetBrains Mono',monospace;text-transform:uppercase;}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.error-text{color:var(--rejected);font-size:13px;margin-top:6px;}
+.section-title{font-size:11.5px;letter-spacing:1.5px;color:var(--applied);text-transform:uppercase;margin:20px 0 10px;
+  border-top:1px solid var(--rule);padding-top:16px;font-family:'JetBrains Mono',monospace;}
+.section-title:first-child{border-top:none;padding-top:0;}
+.empty-state{text-align:center;padding:50px 20px;color:var(--ink-soft);}
+.empty-state h3{color:var(--ink);margin-bottom:8px;}
+@media(max-width:640px){
+  .donut-wrap{flex-direction:column;align-items:flex-start;}
+  .field-row{grid-template-columns:1fr;}
+  #jt-header{flex-direction:column;align-items:flex-start;gap:6px;}
+}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<div id="jt-app"><div id="jt-root"></div></div>
+<script>
+(function(){
+  if(window.pdfjsLib){
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  }
+  var root = document.getElementById('jt-root');
+  var STATUSES = ['Applied','Interview','Offer','Rejected','Ghosted'];
+
+  var state = {
+    tab:'dashboard',
+    loading:true,
+    applications:[],
+    filterStatus:'all',
+    editingId:null,
+    formDraft:null,
+    formError:null,
+    pendingDeleteId:null,
+    expandedId:null,
+    loadError:null,
+    syncError:null,
+    assist:{link:'', resume:'', resumeFileName:'', parsing:false, dragOver:false, loading:false, error:null, result:null}
+  };
+
+  var resumeSaveTimer = null;
+
+  function genId(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+  function todayISO(){ return new Date().toISOString().slice(0,10); }
+  function escapeHtml(s){ return (s==null?'':String(s)).replace(/[&<>"']/g, function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+  }); }
+  function blankDraft(){
+    return {company:'',role:'',link:'',location:'',rotational:'',programLength:'',status:'Applied',
+      interviewStage:'',dateApplied:todayISO(),deadline:'',comp:'',interestLevel:'',referral:'',jobNumber:'',notes:'',
+      tailoredResume:'',coverLetter:''};
+  }
+  function parseAmount(str){
+    if(!str) return null;
+    var m = String(str).replace(/,/g,'').match(/([\d.]+)\s*(k|K)?/);
+    if(!m) return null;
+    var n = parseFloat(m[1]);
+    if(isNaN(n)) return null;
+    if(m[2]) n = n*1000;
+    return n;
+  }
+  function dotsFor(level){
+    var n = parseInt(level)||0, s='';
+    for(var i=1;i<=5;i++){ s += (i<=n ? '\u25CF' : '\u25CB'); }
+    return s;
+  }
+
+  var SUPABASE_URL = 'https://vgjoawyjtclxewmgwvxe.supabase.co';
+  var SUPABASE_KEY = 'sb_publishable_VIRyCJYVknN4M7nN0gverQ_DRJ3mv0G';
+  var sb = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
+
+  function toDbRow(a){
+    return {
+      id:a.id, company:a.company||'', role:a.role||'', link:a.link||'', location:a.location||'',
+      rotational:a.rotational||'', program_length:a.programLength||'', status:a.status||'Applied',
+      interview_stage:a.interviewStage||'', date_applied:a.dateApplied||'', deadline:a.deadline||'',
+      comp:a.comp||'', interest_level:a.interestLevel||'', referral:a.referral||'', job_number:a.jobNumber||'',
+      notes:a.notes||'', tailored_resume:a.tailoredResume||'', cover_letter:a.coverLetter||'',
+      updated_at:new Date().toISOString()
+    };
+  }
+  function fromDbRow(row){
+    return {
+      id:row.id, company:row.company||'', role:row.role||'', link:row.link||'', location:row.location||'',
+      rotational:row.rotational||'', programLength:row.program_length||'', status:row.status||'Applied',
+      interviewStage:row.interview_stage||'', dateApplied:row.date_applied||'', deadline:row.deadline||'',
+      comp:row.comp||'', interestLevel:row.interest_level||'', referral:row.referral||'', jobNumber:row.job_number||'',
+      notes:row.notes||'', tailoredResume:row.tailored_resume||'', coverLetter:row.cover_letter||''
+    };
+  }
+
+  async function loadData(){
+    if(!sb){
+      state.loadError = 'Could not connect to the database client. Reload the page.';
+      state.loading = false; render(); return;
+    }
+    try{
+      var res = await sb.from('job_tracker_applications').select('*').order('created_at', {ascending:true});
+      if(res.error) throw res.error;
+      if(res.data && res.data.length){
+        state.applications = res.data.map(fromDbRow);
+      } else {
+        var seed = Object.assign(blankDraft(), {company:'Caterpillar', dateApplied:''});
+        seed.id = genId();
+        var insRes = await sb.from('job_tracker_applications').insert(toDbRow(seed));
+        state.applications = insRes.error ? [] : [seed];
+      }
+    }catch(e){
+      console.error('load applications failed', e);
+      state.applications = [];
+      state.loadError = 'Could not reach the database. Check your connection and reload the page.';
+    }
+    try{
+      var rres = await sb.from('job_tracker_resume').select('*').eq('id',1).maybeSingle();
+      if(rres.error) throw rres.error;
+      state.assist.resume = (rres.data && rres.data.resume_text) || '';
+      state.assist.resumeFileName = (rres.data && rres.data.resume_filename) || '';
+    }catch(e){ console.error('load resume failed', e); }
+    state.loading = false;
+    render();
+  }
+  async function saveApplicationRemote(app){
+    try{
+      var res = await sb.from('job_tracker_applications').upsert(toDbRow(app));
+      if(res.error){ console.error('save failed', res.error); state.syncError='Could not save to the database. Your last change may not have been saved.'; render(); }
+    }catch(e){ console.error('save failed', e); state.syncError='Could not save to the database. Your last change may not have been saved.'; render(); }
+  }
+  async function deleteApplicationRemote(id){
+    try{
+      var res = await sb.from('job_tracker_applications').delete().eq('id', id);
+      if(res.error){ console.error('delete failed', res.error); state.syncError='Could not delete that entry from the database.'; render(); }
+    }catch(e){ console.error('delete failed', e); state.syncError='Could not delete that entry from the database.'; render(); }
+  }
+  async function persistResume(text, fileName){
+    if(!sb) return;
+    try{
+      var res = await sb.from('job_tracker_resume').upsert({id:1, resume_text:text, resume_filename:fileName||'', updated_at:new Date().toISOString()});
+      if(res.error) console.error('resume save failed', res.error);
+    }catch(e){ console.error('resume save failed', e); }
+  }
+  async function extractPdfText(file){
+    if(!window.pdfjsLib){ throw new Error('PDF reader did not load. Check your connection and try again.'); }
+    var buf = await file.arrayBuffer();
+    var pdf = await pdfjsLib.getDocument({data: buf}).promise;
+    var text = '';
+    for(var i=1;i<=pdf.numPages;i++){
+      var page = await pdf.getPage(i);
+      var content = await page.getTextContent();
+      text += content.items.map(function(it){ return it.str; }).join(' ') + '\n\n';
+    }
+    text = text.trim();
+    if(!text){ throw new Error('No selectable text found in that PDF. If it is a scanned image, it will need to be a text-based PDF.'); }
+    return text;
+  }
+  async function handleResumeFile(file){
+    if(!file) return;
+    var isPdf = file.type==='application/pdf' || /\.pdf$/i.test(file.name||'');
+    if(!isPdf){ state.assist.error='Please drop a PDF file.'; render(); return; }
+    state.assist.parsing = true; state.assist.error = null; render();
+    try{
+      var text = await extractPdfText(file);
+      state.assist.resume = text;
+      state.assist.resumeFileName = file.name;
+      persistResume(text, file.name);
+    }catch(err){
+      state.assist.error = (err && err.message) ? err.message : 'Could not read that PDF. Try another file.';
+    }finally{
+      state.assist.parsing = false; render();
+    }
+  }
+
+  function computeCounts(){
+    var counts = {Applied:0,Interview:0,Offer:0,Rejected:0,Ghosted:0};
+    state.applications.forEach(function(a){
+      if(counts.hasOwnProperty(a.status)) counts[a.status]++;
+    });
+    return counts;
+  }
+  function buildConicGradient(counts, total){
+    var colorVar = {Applied:'var(--applied)',Interview:'var(--interview)',Offer:'var(--offer)',
+      Rejected:'var(--rejected)',Ghosted:'var(--ghosted)'};
+    if(total===0) return 'var(--rule)';
+    var acc=0, parts=[];
+    STATUSES.forEach(function(k){
+      var c = counts[k]||0;
+      if(c===0) return;
+      var start = acc/total*360;
+      acc += c;
+      var end = acc/total*360;
+      parts.push(colorVar[k]+' '+start.toFixed(2)+'deg '+end.toFixed(2)+'deg');
+    });
+    return 'conic-gradient('+parts.join(', ')+')';
+  }
+
+  function renderHeader(){
+    return '<div id="jt-header"><div><div class="eyebrow">JOB-SEARCH / TRACKING SYSTEM</div><h1>Application Log</h1>'+
+      '<div style="color:var(--ink-soft);font-size:13px;margin-top:4px;">Full-time search &middot; pipeline &amp; status tracking</div></div>'+
+      '<div class="stamp-date">REV '+new Date().toLocaleDateString('en-US',{month:'short',day:'2-digit',year:'numeric'}).toUpperCase()+'</div></div>';
+  }
+
+  function renderTabs(){
+    var tabs = [['dashboard','Dashboard'],['applications','Applications'],['add', state.editingId? 'Edit entry':'New entry'],['assist','AI assist']];
+    return '<div id="jt-tabs">'+tabs.map(function(t){
+      var active = state.tab===t[0] ? ' active' : '';
+      return '<button type="button" class="tab'+active+'" data-action="switch-tab" data-tab="'+t[0]+'">'+t[1]+'</button>';
+    }).join('')+'</div>';
+  }
+
+  function renderDashboard(){
+    var counts = computeCounts();
+    var total = state.applications.length;
+    var gradient = buildConicGradient(counts, total);
+    var interviewed = (counts.Interview||0) + (counts.Offer||0);
+    var interviewRate = total ? Math.round(interviewed/total*100) : 0;
+    var offerRate = total ? Math.round((counts.Offer||0)/total*100) : 0;
+    var offerAmounts = state.applications.filter(function(a){ return a.status==='Offer'; })
+      .map(function(a){ return parseAmount(a.comp); }).filter(function(n){ return n!=null; });
+    var avgOffer = offerAmounts.length ? Math.round(offerAmounts.reduce(function(a,b){return a+b;},0)/offerAmounts.length) : null;
+
+    if(total===0){
+      return '<div class="empty-state"><h3>No entries in the file yet</h3>'+
+        '<p>Log your first application to see your pipeline broken down here.</p>'+
+        '<button type="button" class="btn btn-primary" data-action="new-application">Log an application</button></div>';
+    }
+
+    var legend = STATUSES.map(function(s){
+      var c = counts[s]||0;
+      var pct = total ? Math.round(c/total*100) : 0;
+      return '<div class="legend-row"><span><span class="swatch swatch-'+s+'"></span>'+s+'</span>'+
+        '<span class="mono">'+c+' &middot; '+pct+'%</span></div>';
+    }).join('');
+
+    var statCards = '<div class="stat-grid">'+
+      '<div class="stat-card"><div class="num">'+total+'</div><div class="lbl">Total applications</div></div>'+
+      '<div class="stat-card"><div class="num">'+interviewRate+'%</div><div class="lbl">Reached interview</div></div>'+
+      '<div class="stat-card"><div class="num">'+offerRate+'%</div><div class="lbl">Turned into offers</div></div>'+
+      '<div class="stat-card"><div class="num">'+(avgOffer!=null ? '$'+avgOffer.toLocaleString() : '&mdash;')+'</div><div class="lbl">Avg offer (parsed)</div></div>'+
+      '</div>';
+
+    return statCards +
+      '<div class="donut-wrap">'+
+        '<div class="donut" style="background:'+gradient+';"><div class="donut-hole"><div class="count">'+total+'</div><div class="label">FILES</div></div></div>'+
+        '<div class="legend">'+legend+'</div>'+
+      '</div>';
+  }
+
+  function renderApplications(){
+    var counts = computeCounts();
+    var total = state.applications.length;
+    var chips = ['all'].concat(STATUSES).map(function(s){
+      var label = s==='all' ? 'All ('+total+')' : s+' ('+(counts[s]||0)+')';
+      var active = state.filterStatus===s ? ' active' : '';
+      return '<button type="button" class="filter-chip'+active+'" data-action="filter-status" data-status="'+s+'">'+label+'</button>';
+    }).join('');
+
+    var list = state.applications.filter(function(a){
+      return state.filterStatus==='all' || a.status===state.filterStatus;
+    });
+
+    if(state.applications.length===0){
+      return '<div class="empty-state"><h3>No entries in the file yet</h3>'+
+        '<p>Start logging applications and they will show up here.</p>'+
+        '<button type="button" class="btn btn-primary" data-action="new-application">Log an application</button></div>';
+    }
+
+    var cards = list.length ? list.map(renderCard).join('') :
+      '<div class="empty-state"><p>No entries with this status.</p></div>';
+
+    return '<div class="filters">'+chips+'</div>'+
+      '<div style="margin-bottom:16px;"><button type="button" class="btn btn-primary" data-action="new-application">+ Log new application</button></div>'+
+      cards;
+  }
+
+  function renderCard(a){
+    var deleteLabel = state.pendingDeleteId===a.id ? 'Confirm delete?' : 'Delete';
+    var meta = [];
+    if(a.location) meta.push('\uD83D\uDCCD '+escapeHtml(a.location));
+    if(a.interviewStage) meta.push('Stage: '+escapeHtml(a.interviewStage));
+    if(a.dateApplied) meta.push('Applied '+escapeHtml(a.dateApplied));
+    if(a.deadline) meta.push('Deadline '+escapeHtml(a.deadline));
+    if(a.comp) meta.push('Comp '+escapeHtml(a.comp));
+    if(a.rotational==='Yes') meta.push('Rotational'+(a.programLength? ' &middot; '+escapeHtml(a.programLength):''));
+    if(a.referral==='Yes') meta.push('Referral');
+    if(a.jobNumber) meta.push('Job #'+escapeHtml(a.jobNumber));
+    if(a.interestLevel) meta.push('Interest '+dotsFor(a.interestLevel));
+
+    var linkHtml = a.link ? '<a href="'+escapeHtml(a.link)+'" target="_blank" rel="noopener">View posting \u2197</a>' : '';
+    var hasMaterials = (a.tailoredResume && a.tailoredResume.trim()) || (a.coverLetter && a.coverLetter.trim());
+    var expanded = state.expandedId===a.id;
+
+    var materialsHtml = '';
+    if(hasMaterials){
+      materialsHtml = '<button type="button" class="btn-quiet" data-action="toggle-materials" data-id="'+a.id+'">'+
+        (expanded? 'Hide tailored materials':'View tailored materials')+'</button>';
+      if(expanded){
+        materialsHtml += '<div style="margin-top:10px;">';
+        if(a.tailoredResume && a.tailoredResume.trim()){
+          materialsHtml += '<div class="section-title" style="margin-top:0;">Tailored resume notes '+
+            '<button type="button" class="btn-quiet" data-action="copy-text" data-copy-src="app-resume:'+a.id+'" style="margin-left:8px;">Copy</button></div>'+
+            '<div class="letter-box">'+escapeHtml(a.tailoredResume)+'</div>';
+        }
+        if(a.coverLetter && a.coverLetter.trim()){
+          materialsHtml += '<div class="section-title">Cover letter '+
+            '<button type="button" class="btn-quiet" data-action="copy-text" data-copy-src="app-cover:'+a.id+'" style="margin-left:8px;">Copy</button></div>'+
+            '<div class="letter-box">'+escapeHtml(a.coverLetter)+'</div>';
+        }
+        materialsHtml += '</div>';
+      }
+    }
+
+    return '<div class="card-index">'+
+      '<div class="top-row"><div><div class="company">'+escapeHtml(a.company||'Untitled')+'</div>'+
+      '<div class="role">'+escapeHtml(a.role||'')+(a.role && linkHtml? ' &middot; ':'')+linkHtml+'</div></div>'+
+      '<span class="stamp stamp-'+a.status+'">'+a.status+'</span></div>'+
+      (meta.length ? '<div class="meta">'+meta.join(' &nbsp;&middot;&nbsp; ')+'</div>' : '')+
+      (a.notes ? '<div class="notes">'+escapeHtml(a.notes)+'</div>' : '')+
+      (materialsHtml ? '<div style="margin-top:10px;">'+materialsHtml+'</div>' : '')+
+      '<div class="actions">'+
+        '<button type="button" class="btn-quiet" data-action="edit-application" data-id="'+a.id+'">Edit</button>'+
+        '<button type="button" class="btn-quiet" style="color:var(--rejected);" data-action="delete-application" data-id="'+a.id+'">'+deleteLabel+'</button>'+
+      '</div></div>';
+  }
+
+  function opt(value, current, label){
+    return '<option value="'+value+'"'+(value===current?' selected':'')+'>'+label+'</option>';
+  }
+
+  function renderForm(){
+    var d = state.formDraft || blankDraft();
+    var isEdit = !!state.editingId;
+    var materialsNote = (d.tailoredResume || d.coverLetter) ?
+      '<div class="section-title">From AI assist</div><p style="font-size:13px;color:var(--ink-soft);">Tailored resume notes and a cover letter from the AI assist tab are attached to this entry and will be saved with it.</p>' : '';
+
+    return '<form data-form="application">'+
+      (state.formError ? '<div class="error-text">'+escapeHtml(state.formError)+'</div>' : '')+
+      '<div class="section-title" style="margin-top:0;">The basics</div>'+
+      '<div class="field"><label>Company</label><input type="text" data-scope="formDraft" data-field="company" value="'+escapeHtml(d.company)+'" placeholder="Caterpillar" required></div>'+
+      '<div class="field-row">'+
+        '<div class="field"><label>Role / type of engineering</label><input type="text" data-scope="formDraft" data-field="role" value="'+escapeHtml(d.role)+'" placeholder="Mechanical Engineer I"></div>'+
+        '<div class="field"><label>Location</label><input type="text" data-scope="formDraft" data-field="location" value="'+escapeHtml(d.location)+'" placeholder="Peoria, IL"></div>'+
+      '</div>'+
+      '<div class="field"><label>Posting link</label><input type="url" data-scope="formDraft" data-field="link" value="'+escapeHtml(d.link)+'" placeholder="https://..."></div>'+
+
+      '<div class="section-title">Program details</div>'+
+      '<div class="field-row">'+
+        '<div class="field"><label>Rotational program?</label><select data-scope="formDraft" data-field="rotational">'+
+          opt('','','Not specified')+opt('Yes',d.rotational,'Yes')+opt('No',d.rotational,'No')+'</select></div>'+
+        '<div class="field"><label>Program length</label><input type="text" data-scope="formDraft" data-field="programLength" value="'+escapeHtml(d.programLength)+'" placeholder="18 months"></div>'+
+      '</div>'+
+
+      '<div class="section-title">Status &amp; dates</div>'+
+      '<div class="field-row">'+
+        '<div class="field"><label>Decision (drives the chart)</label><select data-scope="formDraft" data-field="status">'+
+          STATUSES.map(function(s){ return opt(s,d.status,s); }).join('')+'</select></div>'+
+        '<div class="field"><label>Interview stage</label><input type="text" data-scope="formDraft" data-field="interviewStage" value="'+escapeHtml(d.interviewStage)+'" placeholder="Phone screen, onsite, final round..."></div>'+
+      '</div>'+
+      '<div class="field"><label>Date applied</label><input type="date" data-scope="formDraft" data-field="dateApplied" value="'+escapeHtml(d.dateApplied)+'"></div>'+
+      '<div class="field"><label>Application deadline</label><input type="date" data-scope="formDraft" data-field="deadline" value="'+escapeHtml(d.deadline)+'"></div>'+
+
+      '<div class="section-title">Comp &amp; extras</div>'+
+      '<div class="field-row">'+
+        '<div class="field"><label>Salary / comp offered</label><input type="text" data-scope="formDraft" data-field="comp" value="'+escapeHtml(d.comp)+'" placeholder="$85,000 or 85k"></div>'+
+        '<div class="field"><label>Job number</label><input type="text" data-scope="formDraft" data-field="jobNumber" value="'+escapeHtml(d.jobNumber)+'"></div>'+
+      '</div>'+
+      '<div class="field-row">'+
+        '<div class="field"><label>My interest level</label><select data-scope="formDraft" data-field="interestLevel">'+
+          opt('',d.interestLevel,'Not set')+[1,2,3,4,5].map(function(n){ return opt(String(n),d.interestLevel,n+' \u2014 '+dotsFor(n)); }).join('')+'</select></div>'+
+        '<div class="field"><label>Referral?</label><select data-scope="formDraft" data-field="referral">'+
+          opt('',d.referral,'Not specified')+opt('Yes',d.referral,'Yes')+opt('No',d.referral,'No')+'</select></div>'+
+      '</div>'+
+      '<div class="field"><label>Notes</label><textarea data-scope="formDraft" data-field="notes" rows="3" placeholder="Recruiter name, interview prep, follow-ups...">'+escapeHtml(d.notes)+'</textarea></div>'+
+      materialsNote+
+      '<div style="display:flex;gap:10px;margin-top:18px;">'+
+        '<button type="submit" class="btn btn-primary">'+(isEdit? 'Update entry':'Save entry')+'</button>'+
+        (isEdit ? '<button type="button" class="btn" data-action="cancel-edit">Cancel</button>' : '')+
+      '</div>'+
+    '</form>';
+  }
+
+  function renderAssist(){
+    var a = state.assist;
+    var dropClass = 'drop-zone' + (a.dragOver ? ' drag-over' : '');
+    var dropZoneHtml;
+    if(a.parsing){
+      dropZoneHtml = '<div class="'+dropClass+'"><div class="mono" style="font-size:13px;">Reading your resume...</div></div>';
+    } else if(a.resumeFileName){
+      var wordCount = a.resume ? a.resume.trim().split(/\s+/).length : 0;
+      dropZoneHtml = '<div class="resume-loaded">'+
+        '<div><i style="font-style:normal;">\uD83D\uDCC4</i> <strong>'+escapeHtml(a.resumeFileName)+'</strong>'+
+        '<span class="mono" style="color:var(--ink-soft);font-size:12px;margin-left:8px;">'+wordCount+' words parsed</span></div>'+
+        '<button type="button" class="btn-quiet" style="color:var(--rejected);" data-action="remove-resume">Remove</button>'+
+        '</div>'+
+        '<details style="margin-top:8px;"><summary style="font-size:12.5px;color:var(--ink-soft);cursor:pointer;">Preview extracted text</summary>'+
+        '<div class="letter-box" style="max-height:160px;overflow-y:auto;margin-top:8px;">'+escapeHtml(a.resume)+'</div></details>';
+    } else {
+      dropZoneHtml = '<div class="'+dropClass+'" id="jt-drop-zone">'+
+        '<div style="font-size:14px;">Drag &amp; drop your resume PDF here</div>'+
+        '<div style="font-size:12.5px;color:var(--ink-soft);margin-top:4px;">or <span style="text-decoration:underline;">click to browse</span> &mdash; PDF only</div>'+
+        '</div>';
+    }
+    var out = '<p style="color:var(--ink-soft);font-size:13.5px;margin-top:0;">Paste a job posting link and drop in your resume PDF. Claude will look up the posting, then rewrite resume bullets and a cover letter using only what is actually in your resume.</p>'+
+      '<div class="field"><label>Job posting link</label><input type="url" data-scope="assist" data-field="link" value="'+escapeHtml(a.link)+'" placeholder="https://company.com/careers/job-id"></div>'+
+      '<div class="field"><label>Your resume (PDF) &mdash; saved automatically</label>'+
+      '<input type="file" id="jt-resume-input" accept="application/pdf,.pdf" style="display:none;">'+
+      dropZoneHtml+'</div>'+
+      '<button type="button" class="btn btn-primary" data-action="run-assist"'+(a.loading?' disabled':'')+'>'+(a.loading? 'Working on it...' : 'Analyze &amp; tailor')+'</button>';
+
+    if(a.error){
+      out += '<div class="error-text" style="margin-top:14px;">'+escapeHtml(a.error)+'</div>';
+    }
+
+    if(a.result){
+      var r = a.result;
+      out += '<div class="section-title">Posting summary</div>';
+      out += '<p style="margin:0 0 4px;"><strong>'+escapeHtml(r.role||'Role not identified')+'</strong>'+(r.company? ' at '+escapeHtml(r.company):'')+(r.location? ' \u2014 '+escapeHtml(r.location):'')+'</p>';
+      if(r.notice){ out += '<p style="font-size:13px;color:var(--ink-soft);">'+escapeHtml(r.notice)+'</p>'; }
+      if(r.keyRequirements && r.keyRequirements.length){
+        out += '<ul style="font-size:13.5px;padding-left:20px;">'+r.keyRequirements.map(function(k){ return '<li>'+escapeHtml(k)+'</li>'; }).join('')+'</ul>';
+      }
+      if(r.tailoredSummary){
+        out += '<div class="section-title">Tailored summary <button type="button" class="btn-quiet" data-action="copy-text" data-copy-src="assist-summary" style="margin-left:8px;">Copy</button></div>'+
+          '<div class="letter-box">'+escapeHtml(r.tailoredSummary)+'</div>';
+      }
+      if(r.tailoredBullets && r.tailoredBullets.length){
+        out += '<div class="section-title">Tailored resume bullets <button type="button" class="btn-quiet" data-action="copy-text" data-copy-src="assist-bullets" style="margin-left:8px;">Copy all</button></div>'+
+          '<ul style="font-size:13.5px;padding-left:20px;">'+r.tailoredBullets.map(function(b){ return '<li style="margin-bottom:4px;">'+escapeHtml(b)+'</li>'; }).join('')+'</ul>';
+      }
+      if(r.coverLetter){
+        out += '<div class="section-title">Cover letter <button type="button" class="btn-quiet" data-action="copy-text" data-copy-src="assist-cover" style="margin-left:8px;">Copy</button></div>'+
+          '<div class="letter-box">'+escapeHtml(r.coverLetter)+'</div>';
+      }
+      out += '<div style="margin-top:16px;"><button type="button" class="btn btn-primary" data-action="save-as-application">Save as new application \u2192</button></div>';
+    }
+    return out;
+  }
+
+  function render(){
+    if(state.loading){
+      root.innerHTML = renderHeader()+'<div style="padding:60px 0;text-align:center;color:var(--ink-soft);" class="mono">Loading tracking data...</div>';
+      return;
+    }
+    if(state.loadError){
+      root.innerHTML = renderHeader()+'<div id="jt-content"><div class="empty-state"><h3>Connection problem</h3><p>'+escapeHtml(state.loadError)+'</p>'+
+        '<button type="button" class="btn btn-primary" data-action="retry-load">Retry</button></div></div>';
+      return;
+    }
+    var content = '';
+    if(state.tab==='dashboard') content = renderDashboard();
+    else if(state.tab==='applications') content = renderApplications();
+    else if(state.tab==='add') content = renderForm();
+    else if(state.tab==='assist') content = renderAssist();
+    var banner = state.syncError ? '<div class="error-text mono" style="margin-bottom:12px;padding:10px 14px;border:1px solid var(--rejected);border-radius:4px;display:flex;justify-content:space-between;align-items:center;gap:12px;">'+
+      '<span>'+escapeHtml(state.syncError)+'</span><button type="button" class="btn-quiet" data-action="dismiss-sync-error" style="color:var(--rejected);">Dismiss</button></div>' : '';
+    root.innerHTML = renderHeader()+renderTabs()+banner+'<div id="jt-content">'+content+'</div>';
+  }
+
+  async function runAssist(){
+    var a = state.assist;
+    if(!a.link || !a.link.trim()){ a.error='Paste a job posting link first.'; render(); return; }
+    if(!a.resume || !a.resume.trim()){ a.error='Drop in your resume PDF first.'; render(); return; }
+    a.loading = true; a.error = null; a.result = null; render();
+
+    var prompt = 'You are helping a job seeker tailor application materials.\n\n'+
+      'Job posting URL: '+a.link.trim()+'\n\n'+
+      'Step 1: Use web search to find this exact job posting (or the closest matching indexed version) and identify the company name, job title, location, and 5-8 key requirements or qualifications from the posting.\n\n'+
+      'Step 2: Here is the candidate resume:\n"""\n'+a.resume.trim()+'\n"""\n\n'+
+      'Using ONLY facts, skills, and experience that actually appear in the resume above (never invent experience, skills, titles, or metrics the candidate does not have), write: a tailored 2-3 sentence professional summary aligned to this role; 5-8 tailored resume bullet points phrased with language/keywords from the posting where the candidate real experience supports it; and a complete ready-to-send cover letter (3-4 short paragraphs, professional but not stiff, addressed generically like "Dear Hiring Team" unless a hiring manager name was found).\n\n'+
+      'Respond with ONLY a raw JSON object, no markdown fences, no preamble, in exactly this shape: '+
+      '{"company":"","role":"","location":"","keyRequirements":["..."],"tailoredSummary":"","tailoredBullets":["..."],"coverLetter":""}\n\n'+
+      'If you cannot access or find the posting content, still return that exact JSON shape: fill company/role/location with your best guess from the URL or leave empty, set keyRequirements to an empty array, still write tailoredSummary/tailoredBullets/coverLetter based on general best practice for the resume as given, and add a "notice" field explaining the posting could not be retrieved.';
+
+    try{
+      var response = await fetch('https://api.anthropic.com/v1/messages', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({
+          model:'claude-sonnet-4-6',
+          max_tokens:1000,
+          messages:[{role:'user', content: prompt}],
+          tools:[{type:'web_search_20250305', name:'web_search'}]
+        })
+      });
+      var data = await response.json();
+      if(data.error){ throw new Error(data.error.message || 'API error'); }
+      var textBlocks = (data.content||[]).filter(function(b){ return b.type==='text'; }).map(function(b){ return b.text; }).join('\n').trim();
+      var cleaned = textBlocks.replace(/^```json\s*/i,'').replace(/^```\s*/,'').replace(/```\s*$/,'').trim();
+      var parsed;
+      try{ parsed = JSON.parse(cleaned); }
+      catch(e){
+        var match = cleaned.match(/\{[\s\S]*\}/);
+        if(match){ parsed = JSON.parse(match[0]); } else { throw new Error('Could not read a response back. Try again.'); }
+      }
+      a.result = parsed;
+    }catch(err){
+      a.error = (err && err.message) ? err.message : 'Something went wrong reaching the posting. Try again.';
+    }finally{
+      a.loading = false;
+      render();
+    }
+  }
+
+  document.getElementById('jt-app').addEventListener('click', function(e){
+    var el = e.target.closest('[data-action]');
+    if(!el) return;
+    var action = el.dataset.action;
+
+    if(action==='switch-tab'){
+      state.tab = el.dataset.tab;
+      if(el.dataset.tab==='add' && !state.formDraft){ state.formDraft = blankDraft(); }
+      render();
+    } else if(action==='retry-load'){
+      state.loadError = null; state.loading = true; render();
+      loadData();
+    } else if(action==='dismiss-sync-error'){
+      state.syncError = null; render();
+    } else if(action==='new-application'){
+      state.editingId = null; state.formError=null; state.formDraft = blankDraft(); state.tab='add'; render();
+    } else if(action==='edit-application'){
+      var id = el.dataset.id;
+      var app = state.applications.find(function(x){ return x.id===id; });
+      if(app){ state.editingId=id; state.formError=null; state.formDraft = Object.assign({}, app); state.tab='add'; render(); }
+    } else if(action==='delete-application'){
+      var did = el.dataset.id;
+      if(state.pendingDeleteId===did){
+        state.applications = state.applications.filter(function(x){ return x.id!==did; });
+        state.pendingDeleteId=null; render();
+        deleteApplicationRemote(did);
+      } else {
+        state.pendingDeleteId = did; render();
+        setTimeout(function(){ if(state.pendingDeleteId===did){ state.pendingDeleteId=null; render(); } }, 4000);
+      }
+    } else if(action==='filter-status'){
+      state.filterStatus = el.dataset.status; render();
+    } else if(action==='cancel-edit'){
+      state.editingId=null; state.formDraft=null; state.formError=null; state.tab='applications'; render();
+    } else if(action==='toggle-materials'){
+      var tid = el.dataset.id;
+      state.expandedId = state.expandedId===tid ? null : tid; render();
+    } else if(action==='remove-resume'){
+      state.assist.resume=''; state.assist.resumeFileName=''; state.assist.error=null;
+      persistResume('', '');
+      render();
+    } else if(action==='run-assist'){
+      runAssist();
+    } else if(action==='save-as-application'){
+      var r = state.assist.result;
+      if(!r) return;
+      var bullets = (r.tailoredBullets||[]).map(function(b){ return '- '+b; }).join('\n');
+      var summaryBlock = r.tailoredSummary ? ('Summary: '+r.tailoredSummary+'\n\n') : '';
+      state.editingId = null; state.formError=null;
+      state.formDraft = Object.assign(blankDraft(), {
+        company: r.company||'', role: r.role||'', location: r.location||'',
+        link: state.assist.link, status:'Applied', dateApplied: todayISO(),
+        tailoredResume: summaryBlock + bullets, coverLetter: r.coverLetter||''
+      });
+      state.tab='add'; render();
+    } else if(action==='copy-text'){
+      var src = el.dataset.copySrc, text='';
+      if(src==='assist-cover') text = (state.assist.result && state.assist.result.coverLetter) || '';
+      else if(src==='assist-summary') text = (state.assist.result && state.assist.result.tailoredSummary) || '';
+      else if(src==='assist-bullets') text = state.assist.result ? (state.assist.result.tailoredBullets||[]).map(function(b){ return '- '+b; }).join('\n') : '';
+      else if(src && src.indexOf('app-resume:')===0){ var aid=src.split(':')[1]; var app1=state.applications.find(function(x){return x.id===aid;}); text = app1 ? (app1.tailoredResume||'') : ''; }
+      else if(src && src.indexOf('app-cover:')===0){ var aid2=src.split(':')[1]; var app2=state.applications.find(function(x){return x.id===aid2;}); text = app2 ? (app2.coverLetter||'') : ''; }
+      var orig = el.textContent;
+      navigator.clipboard.writeText(text).then(function(){
+        el.textContent='Copied'; setTimeout(function(){ el.textContent=orig; },1500);
+      }).catch(function(){ el.textContent='Could not copy'; setTimeout(function(){ el.textContent=orig; },1500); });
+    }
+  });
+
+  document.getElementById('jt-app').addEventListener('input', function(e){
+    var t = e.target;
+    if(!t.dataset || !t.dataset.field) return;
+    if(t.dataset.scope==='formDraft' && state.formDraft){
+      state.formDraft[t.dataset.field] = t.value;
+    } else if(t.dataset.scope==='assist'){
+      state.assist[t.dataset.field] = t.value;
+      if(t.dataset.field==='resume'){
+        clearTimeout(resumeSaveTimer);
+        resumeSaveTimer = setTimeout(function(){ persistResume(t.value); }, 900);
+      }
+    }
+  });
+  document.getElementById('jt-app').addEventListener('change', function(e){
+    var t = e.target;
+    if(t.id==='jt-resume-input'){
+      if(t.files && t.files[0]){ handleResumeFile(t.files[0]); }
+      return;
+    }
+    if(!t.dataset || !t.dataset.field) return;
+    if((t.tagName==='SELECT') && t.dataset.scope==='formDraft' && state.formDraft){
+      state.formDraft[t.dataset.field] = t.value;
+    }
+  });
+  document.getElementById('jt-app').addEventListener('click', function(e){
+    if(e.target.closest('#jt-drop-zone')){
+      var input = document.getElementById('jt-resume-input');
+      if(input) input.click();
+    }
+  });
+  document.getElementById('jt-app').addEventListener('dragover', function(e){
+    if(e.target.closest('#jt-drop-zone')){
+      e.preventDefault();
+      state.assist.dragOver = true;
+      e.target.closest('#jt-drop-zone').classList.add('drag-over');
+    }
+  });
+  document.getElementById('jt-app').addEventListener('dragleave', function(e){
+    if(e.target.closest('#jt-drop-zone')){
+      state.assist.dragOver = false;
+      e.target.closest('#jt-drop-zone').classList.remove('drag-over');
+    }
+  });
+  document.getElementById('jt-app').addEventListener('drop', function(e){
+    var zone = e.target.closest('#jt-drop-zone');
+    if(zone){
+      e.preventDefault();
+      state.assist.dragOver = false;
+      var files = e.dataTransfer && e.dataTransfer.files;
+      if(files && files[0]) handleResumeFile(files[0]);
+    }
+  });
+  document.getElementById('jt-app').addEventListener('submit', function(e){
+    e.preventDefault();
+    var form = e.target.closest('[data-form]');
+    if(!form || form.dataset.form!=='application') return;
+    var draft = state.formDraft || blankDraft();
+    if(!draft.company || !draft.company.trim()){
+      state.formError = 'Company name is required.'; render(); return;
+    }
+    state.formError = null;
+    var savedApp;
+    if(state.editingId){
+      var idx = state.applications.findIndex(function(x){ return x.id===state.editingId; });
+      savedApp = Object.assign({}, draft, {id: state.editingId});
+      if(idx>-1) state.applications[idx] = savedApp;
+    } else {
+      savedApp = Object.assign({}, draft, {id: genId()});
+      state.applications.push(savedApp);
+    }
+    state.formDraft = null; state.editingId = null; state.tab='applications'; state.filterStatus='all';
+    render();
+    saveApplicationRemote(savedApp);
+  });
+
+  loadData();
+})();
+</script>
