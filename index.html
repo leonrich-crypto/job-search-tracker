@@ -234,7 +234,10 @@ body{padding:40px 16px;}
     };
   }
 
-  async function loadData(){
+  async function sleep(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
+
+  async function loadData(attempt){
+    attempt = attempt || 1;
     if(!sb){
       state.loadError = 'Could not connect to the database client. Reload the page.';
       state.loading = false; render(); return;
@@ -250,10 +253,16 @@ body{padding:40px 16px;}
         var insRes = await sb.from('job_tracker_applications').insert(toDbRow(seed));
         state.applications = insRes.error ? [] : [seed];
       }
+      state.loadError = null;
     }catch(e){
-      console.error('load applications failed', e);
+      console.error('load applications failed (attempt '+attempt+')', e);
+      if(attempt<3){
+        await sleep(attempt*800);
+        return loadData(attempt+1);
+      }
       state.applications = [];
-      state.loadError = 'Could not reach the database. Check your connection and reload the page.';
+      var detail = (e && (e.message || e.error_description || e.hint)) || '';
+      state.loadError = 'Could not reach the database after '+attempt+' tries.'+(detail? ' ('+detail+')':'')+' Check your connection and reload the page.';
     }
     try{
       var rres = await sb.from('job_tracker_resume').select('*').eq('id',1).maybeSingle();
