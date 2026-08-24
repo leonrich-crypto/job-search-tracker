@@ -142,7 +142,7 @@ body{padding:40px 16px;}
     search:'',
     sortBy:'newest',
     assist:{link:'', resume:'', resumeFileName:'', parsing:false, dragOver:false, fetching:false, fetchError:null,
-      postingTitle:'', postingText:'', tailoredNotes:'', coverDraft:''}
+      postingTitle:'', postingText:'', tailoredNotes:'', coverDraft:'', generating:false, generateError:null}
   };
 
   var resumeSaveTimer = null;
@@ -595,7 +595,7 @@ body{padding:40px 16px;}
         '<div style="font-size:12.5px;color:var(--ink-soft);margin-top:4px;">or <span style="text-decoration:underline;">click to browse</span> &mdash; PDF only</div>'+
         '</div>';
     }
-    var out = '<p style="color:var(--ink-soft);font-size:13.5px;margin-top:0;">Pull in the job posting text and keep your resume side by side, then write your own tailored resume notes and cover letter below.</p>'+
+    var out = '<p style="color:var(--ink-soft);font-size:13.5px;margin-top:0;">Pull in the job posting text and your resume, then auto-generate tailored resume notes and a cover letter \u2014 or write your own.</p>'+
       '<div class="field-row" style="align-items:end;">'+
         '<div class="field" style="margin-bottom:0;"><label>Job posting link</label><input type="url" data-scope="assist" data-field="link" value="'+escapeHtml(a.link)+'" placeholder="https://company.com/careers/job-id"></div>'+
         '<button type="button" class="btn btn-primary" data-action="fetch-posting"'+(a.fetching?' disabled':'')+' style="height:36px;">'+(a.fetching? 'Fetching...' : 'Fetch posting text')+'</button>'+
@@ -613,8 +613,15 @@ body{padding:40px 16px;}
       '<input type="file" id="jt-resume-input" accept="application/pdf,.pdf" style="display:none;">'+
       dropZoneHtml+'</div>';
 
-    out += '<div class="section-title">Write your own tailored materials</div>'+
-      '<div class="field"><label>Tailored resume notes</label><textarea data-scope="assist" data-field="tailoredNotes" rows="5" placeholder="Bullet points or notes on how to angle your resume for this role...">'+escapeHtml(a.tailoredNotes)+'</textarea></div>'+
+    out += '<div class="section-title">Tailored materials</div>'+
+      '<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px;">'+
+      '<button type="button" class="btn btn-primary" data-action="generate-ai"'+(a.generating?' disabled':'')+'>'+(a.generating? 'Generating\u2026' : 'Auto-generate with AI')+'</button>'+
+      '<span style="font-size:12px;color:var(--ink-soft);">Uses Gemini, fills the fields below \u2014 you can still edit anything.</span>'+
+      '</div>';
+    if(a.generateError){
+      out += '<div style="color:var(--rejected);font-size:13px;margin-bottom:14px;">'+escapeHtml(a.generateError)+'</div>';
+    }
+    out += '<div class="field"><label>Tailored resume notes</label><textarea data-scope="assist" data-field="tailoredNotes" rows="5" placeholder="Bullet points or notes on how to angle your resume for this role...">'+escapeHtml(a.tailoredNotes)+'</textarea></div>'+
       '<div class="field"><label>Cover letter</label><textarea data-scope="assist" data-field="coverDraft" rows="8" placeholder="Draft your cover letter here, referencing the posting text above...">'+escapeHtml(a.coverDraft)+'</textarea></div>'+
       '<button type="button" class="btn btn-primary" data-action="save-as-application">Save as new application \u2192</button>';
 
@@ -663,6 +670,33 @@ body{padding:40px 16px;}
       a.fetchError = (err && err.message) ? err.message : 'Could not reach that page. Paste the description manually instead.';
     }finally{
       a.fetching = false; render();
+    }
+  }
+
+  async function generateAI(){
+    var a = state.assist;
+    if(!a.resume || !a.resume.trim()){ a.generateError='Drop in your resume PDF first.'; render(); return; }
+    if(!a.postingText || !a.postingText.trim()){ a.generateError='Fetch or paste the job description first.'; render(); return; }
+    a.generating = true; a.generateError = null; render();
+    try{
+      if(!sb) throw new Error('Database client did not load. Reload the page.');
+      var res = await sb.functions.invoke('tailor-application', {
+        body: { postingText: a.postingText, resumeText: a.resume, postingTitle: a.postingTitle }
+      });
+      if(res.error) throw res.error;
+      var data = res.data || {};
+      if(data.error){
+        a.generateError = data.error;
+      } else {
+        var bullets = (data.tailoredBullets||[]).map(function(b){ return '- '+b; }).join('\n');
+        var summaryBlock = data.tailoredSummary ? ('Summary: '+data.tailoredSummary+'\n\n') : '';
+        a.tailoredNotes = summaryBlock + bullets;
+        a.coverDraft = data.coverLetter || '';
+      }
+    }catch(err){
+      a.generateError = (err && err.message) ? err.message : 'Could not generate tailored materials. Try again.';
+    }finally{
+      a.generating = false; render();
     }
   }
 
@@ -719,6 +753,8 @@ body{padding:40px 16px;}
       render();
     } else if(action==='fetch-posting'){
       fetchPosting();
+    } else if(action==='generate-ai'){
+      generateAI();
     } else if(action==='save-as-application'){
       var a = state.assist;
       state.editingId = null; state.formError=null;
