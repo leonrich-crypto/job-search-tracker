@@ -31,6 +31,7 @@ body{padding:40px 16px;}
   background:#0D1420;border:1px solid var(--rule);border-radius:4px;padding:8px 10px;color:var(--ink);width:100%;}
 #jt-app input::placeholder,#jt-app textarea::placeholder{color:#48577A;}
 #jt-app input:focus,#jt-app select:focus,#jt-app textarea:focus{outline:1.5px solid var(--applied);outline-offset:1px;border-color:var(--applied);}
+#jt-app textarea[data-autogrow]{overflow-y:hidden;resize:none;}
 #jt-app .btn{border:1px solid var(--rule);background:var(--paper-dark);color:var(--ink);border-radius:4px;padding:9px 16px;
   font-size:13.5px;font-weight:500;letter-spacing:0.2px;}
 #jt-app .btn:hover{border-color:var(--applied);}
@@ -607,7 +608,7 @@ body{padding:40px 16px;}
     }
 
     out += '<div class="field" style="margin-top:16px;"><label>Job description'+(a.postingTitle? ' \u2014 '+escapeHtml(a.postingTitle):'')+' (auto-fetched, or paste/edit manually)</label>'+
-      '<textarea data-scope="assist" data-field="postingText" rows="8" placeholder="Fetched text will appear here, or paste the job description yourself...">'+escapeHtml(a.postingText)+'</textarea></div>';
+      '<textarea data-scope="assist" data-field="postingText" data-autogrow rows="8" placeholder="Fetched text will appear here, or paste the job description yourself...">'+escapeHtml(a.postingText)+'</textarea></div>';
 
     out += '<div class="field"><label>Your resume (PDF, for reference) &mdash; saved automatically</label>'+
       '<input type="file" id="jt-resume-input" accept="application/pdf,.pdf" style="display:none;">'+
@@ -621,8 +622,8 @@ body{padding:40px 16px;}
     if(a.generateError){
       out += '<div style="color:var(--rejected);font-size:13px;margin-bottom:14px;">'+escapeHtml(a.generateError)+'</div>';
     }
-    out += '<div class="field"><label>Tailored resume notes</label><textarea data-scope="assist" data-field="tailoredNotes" rows="5" placeholder="Bullet points or notes on how to angle your resume for this role...">'+escapeHtml(a.tailoredNotes)+'</textarea></div>'+
-      '<div class="field"><label>Cover letter</label><textarea data-scope="assist" data-field="coverDraft" rows="8" placeholder="Draft your cover letter here, referencing the posting text above...">'+escapeHtml(a.coverDraft)+'</textarea></div>'+
+    out += '<div class="field"><label>Tailored resume notes</label><textarea data-scope="assist" data-field="tailoredNotes" data-autogrow rows="5" placeholder="Bullet points or notes on how to angle your resume for this role...">'+escapeHtml(a.tailoredNotes)+'</textarea></div>'+
+      '<div class="field"><label>Cover letter</label><textarea data-scope="assist" data-field="coverDraft" data-autogrow rows="8" placeholder="Draft your cover letter here, referencing the posting text above...">'+escapeHtml(a.coverDraft)+'</textarea></div>'+
       '<button type="button" class="btn btn-primary" data-action="save-as-application">Save as new application \u2192</button>';
 
     return out;
@@ -647,6 +648,17 @@ body{padding:40px 16px;}
       '<span>'+escapeHtml(state.syncError)+'</span><button type="button" class="btn-quiet" data-action="dismiss-sync-error" style="color:var(--rejected);">Dismiss</button></div>' : '';
     root.innerHTML = renderHeader()+renderTabs()+banner+'<div id="jt-content">'+content+'</div>';
     updateSyncIndicator();
+    autoGrowAll();
+  }
+
+  function autoGrowTextarea(ta){
+    if(!ta) return;
+    ta.style.height = 'auto';
+    ta.style.height = ta.scrollHeight + 'px';
+  }
+  function autoGrowAll(){
+    var els = document.querySelectorAll('#jt-app textarea[data-autogrow]');
+    for(var i=0;i<els.length;i++){ autoGrowTextarea(els[i]); }
   }
 
   async function fetchPosting(){
@@ -797,6 +809,7 @@ body{padding:40px 16px;}
       state.formDraft[t.dataset.field] = t.value;
     } else if(t.dataset.scope==='assist'){
       state.assist[t.dataset.field] = t.value;
+      if(t.hasAttribute('data-autogrow')) autoGrowTextarea(t);
       if(t.dataset.field==='resume'){
         clearTimeout(resumeSaveTimer);
         resumeSaveTimer = setTimeout(function(){ persistResume(t.value); }, 900);
