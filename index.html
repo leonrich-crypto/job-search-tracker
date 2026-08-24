@@ -22,7 +22,7 @@ body{padding:40px 16px;}
     linear-gradient(rgba(59,130,246,0.07) 1px, transparent 1px),
     linear-gradient(90deg, rgba(59,130,246,0.07) 1px, transparent 1px);
   background-size:26px 26px;
-  padding:28px 24px 60px;border-radius:10px;max-width:920px;margin:0 auto;}
+  padding:28px 40px 60px;border-radius:10px;max-width:1400px;margin:0 auto;}
 #jt-app h1,#jt-app h2,#jt-app h3{font-family:'JetBrains Mono',monospace;font-weight:600;letter-spacing:0.2px;}
 #jt-app .mono{font-family:'JetBrains Mono',monospace;}
 #jt-app a{color:var(--applied);}
@@ -114,6 +114,19 @@ body{padding:40px 16px;}
   .donut-wrap{flex-direction:column;align-items:flex-start;}
   .field-row{grid-template-columns:1fr;}
   #jt-header{flex-direction:column;align-items:flex-start;gap:6px;}
+}
+@media(min-width:1000px){
+  #jt-content{padding:34px 40px;}
+  .donut{width:250px;height:250px;}
+  .donut-hole{top:32px;left:32px;width:186px;height:186px;}
+  .donut-hole .count{font-size:46px;}
+  .donut-hole .label{font-size:12px;}
+  .stat-card{padding:16px 20px;}
+  .stat-card .num{font-size:28px;}
+  .stat-card .lbl{font-size:12.5px;}
+  .legend-row{font-size:15.5px;}
+  .card-index{padding:20px 24px;}
+  .card-index .company{font-size:18px;}
 }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
