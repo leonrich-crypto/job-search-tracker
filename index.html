@@ -688,8 +688,8 @@ body{padding:40px 16px;}
       if(data.error){
         a.generateError = data.error;
       } else {
-        var bullets = (data.tailoredBullets||[]).map(function(b){ return '- '+b; }).join('\n');
-        var summaryBlock = data.tailoredSummary ? ('Summary: '+data.tailoredSummary+'\n\n') : '';
+        var bullets = (data.tailoredBullets||[]).map(function(b){ return '\u2022 '+b; }).join('\n');
+        var summaryBlock = data.tailoredSummary ? ('SUMMARY\n'+data.tailoredSummary+'\n\nRESUME BULLETS\n') : '';
         a.tailoredNotes = summaryBlock + bullets;
         a.coverDraft = data.coverLetter || '';
       }
