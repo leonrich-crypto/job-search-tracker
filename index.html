@@ -602,7 +602,8 @@ body{padding:40px 16px;}
       '</div>';
 
     if(a.fetchError){
-      out += '<div class="error-text" style="margin-top:10px;">'+escapeHtml(a.fetchError)+'</div>';
+      var isWarning = !!(a.postingText && a.postingText.trim());
+      out += '<div style="margin-top:10px;color:'+(isWarning?'var(--interview)':'var(--rejected)')+';font-size:13px;">'+escapeHtml(a.fetchError)+'</div>';
     }
 
     out += '<div class="field" style="margin-top:16px;"><label>Job description'+(a.postingTitle? ' \u2014 '+escapeHtml(a.postingTitle):'')+' (auto-fetched, or paste/edit manually)</label>'+
@@ -656,6 +657,7 @@ body{padding:40px 16px;}
       } else {
         a.postingTitle = data.title || '';
         a.postingText = data.text || '';
+        a.fetchError = data.notice || null;
       }
     }catch(err){
       a.fetchError = (err && err.message) ? err.message : 'Could not reach that page. Paste the description manually instead.';
