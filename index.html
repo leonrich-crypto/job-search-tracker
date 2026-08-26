@@ -1,3 +1,14 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Job Search Tracker</title>
+<meta name="description" content="Full-time job search application log: pipeline tracking, status breakdown, and AI-assisted resume/cover letter tailoring.">
+<meta name="theme-color" content="#0A0E16">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
@@ -60,6 +71,13 @@ html,body{margin:0;padding:0;background:var(--paper);min-height:100%;width:100%;
   max-width:1600px;margin-left:auto;margin-right:auto;}
 .stamp{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:1px;
   padding:3px 9px;border:1px solid currentColor;border-radius:3px;text-transform:uppercase;white-space:nowrap;background:rgba(255,255,255,0.03);}
+.stamp-select{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:1px;
+  padding:3px 22px 3px 9px;border:1px solid currentColor;border-radius:3px;text-transform:uppercase;white-space:nowrap;
+  background:rgba(255,255,255,0.03);width:auto;cursor:pointer;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%237C8BAA' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 8px center;appearance:none;-webkit-appearance:none;}
+.stamp-select option{background:var(--paper-card);color:var(--ink);text-transform:none;letter-spacing:normal;}
+.stamp-select:focus{outline:1.5px solid currentColor;outline-offset:1px;}
 .stamp-Applied{color:var(--applied);}
 .stamp-Interview{color:var(--interview);}
 .stamp-Offer{color:var(--offer);}
@@ -134,6 +152,8 @@ html,body{margin:0;padding:0;background:var(--paper);min-height:100%;width:100%;
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+</head>
+<body>
 <div id="jt-app"><div id="jt-root"></div></div>
 <script>
 (function(){
@@ -158,6 +178,8 @@ html,body{margin:0;padding:0;background:var(--paper);min-height:100%;width:100%;
     pendingSyncCount:0,
     search:'',
     sortBy:'newest',
+    importBusy:false,
+    importResult:null,
     assist:{link:'', resume:'', resumeFileName:'', parsing:false, dragOver:false, fetching:false, fetchError:null,
       postingTitle:'', postingText:'', tailoredNotes:'', coverDraft:'', generating:false, generateError:null}
   };
@@ -221,6 +243,111 @@ html,body{margin:0;padding:0;background:var(--paper);min-height:100%;width:100%;
     link.href = url; link.download = 'job-search-tracker-'+todayISO()+'.csv';
     document.body.appendChild(link); link.click(); document.body.removeChild(link);
     URL.revokeObjectURL(url);
+  }
+  function parseCsv(text){
+    text = text.replace(/^\uFEFF/, '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+    var rows = [], row = [], field = '', inQuotes = false;
+    for(var i=0;i<text.length;i++){
+      var c = text[i];
+      if(inQuotes){
+        if(c==='"'){
+          if(text[i+1]==='"'){ field+='"'; i++; } else { inQuotes=false; }
+        } else { field+=c; }
+      } else {
+        if(c==='"'){ inQuotes=true; }
+        else if(c===','){ row.push(field); field=''; }
+        else if(c==='\n'){ row.push(field); rows.push(row); row=[]; field=''; }
+        else { field+=c; }
+      }
+    }
+    if(field.length || row.length){ row.push(field); rows.push(row); }
+    return rows.filter(function(r){ return r.length>1 || (r[0]||'').trim(); });
+  }
+  function normalizeStatus(v){
+    v = (v||'').trim();
+    var match = STATUSES.find(function(s){ return s.toLowerCase()===v.toLowerCase(); });
+    return match || 'Applied';
+  }
+  async function handleCsvImport(file){
+    state.importBusy = true; state.importResult = null; render();
+    try{
+      var text = await file.text();
+      var rows = parseCsv(text);
+      if(!rows.length){ state.importResult = 'The file appears to be empty.'; state.importBusy=false; render(); return; }
+      var header = rows[0].map(function(h){ return (h||'').trim().toLowerCase(); });
+      function col(names){
+        for(var n=0;n<names.length;n++){
+          var idx = header.indexOf(names[n]);
+          if(idx>-1) return idx;
+        }
+        return -1;
+      }
+      var idx = {
+        company: col(['company name','company']),
+        role: col(['role / type of engineering','role','role / type']),
+        rotational: col(['rotational?','rotational']),
+        programLength: col(['program length']),
+        location: col(['location']),
+        link: col(['url','link']),
+        interestLevel: col(['my interest level','interest level']),
+        interviewStage: col(['interview stage']),
+        status: col(['decision','status']),
+        comp: col(['salary / comp','comp','salary']),
+        deadline: col(['application deadline','deadline']),
+        referral: col(['referral']),
+        dateApplied: col(['date applied']),
+        jobNumber: col(['job number']),
+        notes: col(['notes']),
+      };
+      if(idx.company===-1){
+        state.importResult = 'Could not find a "Company name" column in that file.';
+        state.importBusy = false; render(); return;
+      }
+      var added = [];
+      for(var r=1;r<rows.length;r++){
+        var row = rows[r];
+        var company = (row[idx.company]||'').trim();
+        if(!company) continue;
+        var app = Object.assign(blankDraft(), {
+          id: genId(),
+          company: company,
+          role: idx.role>-1 ? (row[idx.role]||'').trim() : '',
+          rotational: idx.rotational>-1 ? (row[idx.rotational]||'').trim() : '',
+          programLength: idx.programLength>-1 ? (row[idx.programLength]||'').trim() : '',
+          location: idx.location>-1 ? (row[idx.location]||'').trim() : '',
+          link: idx.link>-1 ? (row[idx.link]||'').trim() : '',
+          interestLevel: idx.interestLevel>-1 ? (row[idx.interestLevel]||'').trim() : '',
+          interviewStage: idx.interviewStage>-1 ? (row[idx.interviewStage]||'').trim() : '',
+          status: idx.status>-1 ? normalizeStatus(row[idx.status]) : 'Applied',
+          comp: idx.comp>-1 ? (row[idx.comp]||'').trim() : '',
+          deadline: idx.deadline>-1 ? (row[idx.deadline]||'').trim() : '',
+          referral: idx.referral>-1 ? (row[idx.referral]||'').trim() : '',
+          dateApplied: idx.dateApplied>-1 ? (row[idx.dateApplied]||'').trim() : '',
+          jobNumber: idx.jobNumber>-1 ? (row[idx.jobNumber]||'').trim() : '',
+          notes: idx.notes>-1 ? (row[idx.notes]||'').trim() : '',
+        });
+        added.push(app);
+      }
+      if(!added.length){
+        state.importResult = 'No valid rows found (each row needs at least a company name).';
+        state.importBusy = false; render(); return;
+      }
+      state.applications = state.applications.concat(added);
+      render();
+      if(sb){
+        state.pendingSyncCount++; updateSyncIndicator();
+        try{
+          var res = await sb.from('job_tracker_applications').upsert(added.map(toDbRow));
+          if(res.error){ state.syncError = 'Imported locally, but the database save failed: '+(res.error.message||'unknown error'); }
+        }catch(e){ state.syncError = 'Imported locally, but the database save failed.'; }
+        finally{ state.pendingSyncCount--; updateSyncIndicator(); }
+      }
+      state.importResult = 'Imported '+added.length+' application'+(added.length===1?'':'s')+'.';
+    }catch(err){
+      state.importResult = 'Could not read that file. Make sure it is a CSV.';
+    }
+    state.importBusy = false;
+    render();
   }
   function updateSyncIndicator(){
     var el = document.getElementById('jt-sync-indicator');
@@ -384,6 +511,49 @@ html,body{margin:0;padding:0;background:var(--paper);min-height:100%;width:100%;
     }).join('')+'</div>';
   }
 
+  function getWeekStart(d){
+    var day = d.getDay();
+    var diff = (day===0 ? -6 : 1-day);
+    var monday = new Date(d);
+    monday.setDate(d.getDate()+diff);
+    monday.setHours(0,0,0,0);
+    return monday;
+  }
+  function renderActivityChart(){
+    var weeks = [];
+    var now = new Date();
+    var thisWeekStart = getWeekStart(now);
+    for(var i=7;i>=0;i--){
+      var ws = new Date(thisWeekStart);
+      ws.setDate(thisWeekStart.getDate()-(7*i));
+      weeks.push({ start: ws, count: 0 });
+    }
+    state.applications.forEach(function(a){
+      if(!a.dateApplied) return;
+      var d = new Date(a.dateApplied+'T00:00:00');
+      if(isNaN(d.getTime())) return;
+      var ws = getWeekStart(d).getTime();
+      for(var i=0;i<weeks.length;i++){
+        if(weeks[i].start.getTime()===ws){ weeks[i].count++; break; }
+      }
+    });
+    var max = Math.max.apply(null, weeks.map(function(w){ return w.count; }).concat([1]));
+    var bars = weeks.map(function(w){
+      var pct = Math.round((w.count/max)*100);
+      var h = w.count>0 ? Math.max(pct,6) : 2;
+      var label = w.start.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+      return '<div style="display:flex;flex-direction:column;align-items:center;flex:1;gap:6px;">'+
+        '<div class="mono" style="font-size:11px;color:var(--ink-soft);">'+(w.count||'')+'</div>'+
+        '<div style="width:100%;max-width:34px;height:110px;display:flex;align-items:flex-end;">'+
+          '<div style="width:100%;height:'+h+'%;background:'+(w.count>0?'var(--applied)':'var(--rule)')+';border-radius:2px 2px 0 0;"></div>'+
+        '</div>'+
+        '<div class="mono" style="font-size:10px;color:var(--ink-soft);white-space:nowrap;">'+label+'</div>'+
+      '</div>';
+    }).join('');
+    return '<div class="section-title" style="margin-top:28px;">Applications per week</div>'+
+      '<div style="display:flex;align-items:flex-end;gap:6px;padding-top:8px;">'+bars+'</div>';
+  }
+
   function renderDashboard(){
     var counts = computeCounts();
     var total = state.applications.length;
@@ -421,7 +591,8 @@ html,body{margin:0;padding:0;background:var(--paper);min-height:100%;width:100%;
       '<div class="donut-wrap">'+
         '<div class="donut" style="background:'+gradient+';"><div class="donut-hole"><div class="count">'+total+'</div><div class="label">FILES</div></div></div>'+
         '<div class="legend">'+legend+'</div>'+
-      '</div>';
+      '</div>'+
+      renderActivityChart();
   }
 
   function renderApplications(){
@@ -466,8 +637,14 @@ html,body{margin:0;padding:0;background:var(--paper);min-height:100%;width:100%;
       '<select data-scope="ui" data-field="sortBy" style="width:auto;" aria-label="Sort applications">'+
         opt('newest', state.sortBy, 'Newest first')+opt('oldest', state.sortBy, 'Oldest first')+opt('company', state.sortBy, 'Company A\u2013Z')+
       '</select>'+
+      '<input type="file" id="jt-csv-input" accept=".csv,text/csv" style="display:none;">'+
+      '<button type="button" class="btn" data-action="import-csv"'+(state.importBusy?' disabled':'')+'>'+(state.importBusy?'Importing\u2026':'Import CSV')+'</button>'+
       '<button type="button" class="btn" data-action="export-csv">Export CSV</button>'+
       '</div>';
+    if(state.importResult){
+      toolbar += '<div class="mono" style="font-size:12.5px;color:var(--applied);margin:-6px 0 14px;">'+escapeHtml(state.importResult)+
+        ' <button type="button" class="btn-quiet" data-action="dismiss-import-result">Dismiss</button></div>';
+    }
 
     return '<div class="filters">'+chips+'</div>'+
       toolbar+
@@ -516,7 +693,9 @@ html,body{margin:0;padding:0;background:var(--paper);min-height:100%;width:100%;
     return '<div class="card-index"'+(stale?' style="border-left-color:var(--interview);"':'')+'>'+
       '<div class="top-row"><div><div class="company">'+escapeHtml(a.company||'Untitled')+'</div>'+
       '<div class="role">'+escapeHtml(a.role||'')+(a.role && linkHtml? ' &middot; ':'')+linkHtml+'</div></div>'+
-      '<span class="stamp stamp-'+a.status+'">'+a.status+'</span></div>'+
+      '<select class="stamp-select stamp-'+a.status+'" data-scope="quick-status" data-id="'+a.id+'" aria-label="Change status for '+escapeHtml(a.company||'this entry')+'">'+
+        STATUSES.map(function(s){ return '<option value="'+s+'"'+(s===a.status?' selected':'')+'>'+s.toUpperCase()+'</option>'; }).join('')+
+      '</select></div>'+
       (stale ? '<div class="mono" style="font-size:11.5px;color:var(--interview);margin-top:8px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">'+
         '\u26A0 NO RESPONSE IN '+daysSince(a.dateApplied)+' DAYS'+
         '<button type="button" class="btn-quiet" style="color:var(--interview);" data-action="mark-ghosted" data-id="'+a.id+'">Mark as ghosted</button></div>' : '')+
@@ -768,6 +947,11 @@ html,body{margin:0;padding:0;background:var(--paper);min-height:100%;width:100%;
       }
     } else if(action==='export-csv'){
       exportCsv();
+    } else if(action==='import-csv'){
+      var csvInput = document.getElementById('jt-csv-input');
+      if(csvInput) csvInput.click();
+    } else if(action==='dismiss-import-result'){
+      state.importResult = null; render();
     } else if(action==='filter-status'){
       state.filterStatus = el.dataset.status; render();
     } else if(action==='cancel-edit'){
@@ -838,6 +1022,20 @@ html,body{margin:0;padding:0;background:var(--paper);min-height:100%;width:100%;
       if(t.files && t.files[0]){ handleResumeFile(t.files[0]); }
       return;
     }
+    if(t.id==='jt-csv-input'){
+      if(t.files && t.files[0]){ handleCsvImport(t.files[0]); }
+      return;
+    }
+    if(t.dataset && t.dataset.scope==='quick-status'){
+      var qid = t.dataset.id;
+      var qidx = state.applications.findIndex(function(x){ return x.id===qid; });
+      if(qidx>-1){
+        state.applications[qidx] = Object.assign({}, state.applications[qidx], {status:t.value});
+        render();
+        saveApplicationRemote(state.applications[qidx]);
+      }
+      return;
+    }
     if(!t.dataset || !t.dataset.field) return;
     if(t.dataset.scope==='ui' && t.dataset.field==='sortBy'){
       state.sortBy = t.value; render(); return;
@@ -905,5 +1103,13 @@ html,body{margin:0;padding:0;background:var(--paper);min-height:100%;width:100%;
   });
 
   loadData();
+
+  if('serviceWorker' in navigator){
+    window.addEventListener('load', function(){
+      navigator.serviceWorker.register('sw.js').catch(function(){ /* offline shell unavailable, app still works online */ });
+    });
+  }
 })();
 </script>
+</body>
+</html>
