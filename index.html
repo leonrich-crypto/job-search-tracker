@@ -833,11 +833,15 @@ html,body{margin:0;padding:0;background:var(--paper);min-height:100%;width:100%;
         '<div style="font-size:12.5px;color:var(--ink-soft);margin-top:4px;">or <span style="text-decoration:underline;">click to browse</span> &mdash; PDF only</div>'+
         '</div>';
     }
+    var hasResume = a.resume && a.resume.trim();
+    var fetchBusy = a.fetching || a.generating;
+    var fetchLabel = a.fetching ? 'Fetching\u2026' : (a.generating ? 'Generating\u2026' : (hasResume ? 'Fetch & generate' : 'Fetch posting text'));
     var out = '<p style="color:var(--ink-soft);font-size:13.5px;margin-top:0;">Pull in the job posting text and your resume, then auto-generate tailored resume notes and a cover letter \u2014 or write your own.</p>'+
       '<div class="field-row" style="align-items:end;">'+
         '<div class="field" style="margin-bottom:0;"><label>Job posting link</label><input type="url" data-scope="assist" data-field="link" value="'+escapeHtml(a.link)+'" placeholder="https://company.com/careers/job-id"></div>'+
-        '<button type="button" class="btn btn-primary" data-action="fetch-posting"'+(a.fetching?' disabled':'')+' style="height:36px;">'+(a.fetching? 'Fetching...' : 'Fetch posting text')+'</button>'+
-      '</div>';
+        '<button type="button" class="btn btn-primary" data-action="fetch-posting"'+(fetchBusy?' disabled':'')+' style="height:36px;">'+fetchLabel+'</button>'+
+      '</div>'+
+      (hasResume ? '' : '<div style="font-size:12px;color:var(--ink-soft);margin-top:6px;">Load your resume below first and this button will fetch and generate in one step.</div>');
 
     if(a.fetchError){
       var isWarning = !!(a.postingText && a.postingText.trim());
@@ -915,6 +919,7 @@ html,body{margin:0;padding:0;background:var(--paper);min-height:100%;width:100%;
     var a = state.assist;
     if(!a.link || !a.link.trim()){ a.fetchError='Paste a job posting link first.'; render(); return; }
     a.fetching = true; a.fetchError = null; render();
+    var fetchedOk = false;
     try{
       if(!sb) throw new Error('Database client did not load. Reload the page.');
       var res = await sb.functions.invoke('fetch-posting', { body: { url: a.link.trim() } });
@@ -927,11 +932,15 @@ html,body{margin:0;padding:0;background:var(--paper);min-height:100%;width:100%;
         a.postingTitle = data.title || '';
         a.postingText = data.text || '';
         a.fetchError = data.notice || null;
+        fetchedOk = true;
       }
     }catch(err){
       a.fetchError = (err && err.message) ? err.message : 'Could not reach that page. Paste the description manually instead.';
     }finally{
       a.fetching = false; render();
+    }
+    if(fetchedOk && a.resume && a.resume.trim()){
+      await generateAI();
     }
   }
 
