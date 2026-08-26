@@ -195,7 +195,8 @@ html,body{margin:0;padding:0;background:var(--paper);min-height:100%;width:100%;
     importBusy:false,
     importResult:null,
     assist:{link:'', resume:'', resumeFileName:'', parsing:false, dragOver:false, fetching:false, fetchError:null,
-      postingTitle:'', postingText:'', tailoredNotes:'', coverDraft:'', generating:false, generateError:null}
+      postingTitle:'', postingText:'', tailoredNotes:'', coverDraft:'', generating:false, generateError:null,
+      extracted:null}
   };
 
   var resumeSaveTimer = null;
@@ -853,10 +854,23 @@ html,body{margin:0;padding:0;background:var(--paper);min-height:100%;width:100%;
     out += '<div class="section-title">Tailored materials</div>'+
       '<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px;">'+
       '<button type="button" class="btn btn-primary" data-action="generate-ai"'+(a.generating?' disabled':'')+'>'+(a.generating? 'Generating\u2026' : 'Auto-generate with AI')+'</button>'+
-      '<span style="font-size:12px;color:var(--ink-soft);">Uses Gemini, fills the fields below \u2014 you can still edit anything.</span>'+
+      '<span style="font-size:12px;color:var(--ink-soft);">Uses Gemini, fills the fields below and the application details \u2014 you can still edit anything.</span>'+
       '</div>';
     if(a.generateError){
       out += '<div style="color:var(--rejected);font-size:13px;margin-bottom:14px;">'+escapeHtml(a.generateError)+'</div>';
+    }
+    if(a.extracted){
+      var ex = a.extracted;
+      var chips = [];
+      if(ex.company) chips.push('<strong>'+escapeHtml(ex.company)+'</strong>');
+      if(ex.role) chips.push(escapeHtml(ex.role));
+      if(ex.location) chips.push(escapeHtml(ex.location));
+      if(ex.rotational==='Yes') chips.push('Rotational'+(ex.programLength?' ('+escapeHtml(ex.programLength)+')':''));
+      if(ex.applicationDeadline) chips.push('Deadline '+escapeHtml(ex.applicationDeadline));
+      if(ex.jobNumber) chips.push('Job #'+escapeHtml(ex.jobNumber));
+      out += '<div style="background:var(--paper-dark);border:1px solid var(--rule);border-radius:12px;padding:12px 16px;margin-bottom:16px;font-size:13.5px;">'+
+        (chips.length ? chips.join(' &nbsp;&middot;&nbsp; ') : '<span style="color:var(--ink-soft);">Could not detect company/role/location from the posting \u2014 you can fill those in manually after saving.</span>')+
+        '</div>';
     }
     out += '<div class="field"><label>Tailored resume notes</label><textarea data-scope="assist" data-field="tailoredNotes" data-autogrow rows="5" placeholder="Bullet points or notes on how to angle your resume for this role...">'+escapeHtml(a.tailoredNotes)+'</textarea></div>'+
       '<div class="field"><label>Cover letter</label><textarea data-scope="assist" data-field="coverDraft" data-autogrow rows="8" placeholder="Draft your cover letter here, referencing the posting text above...">'+escapeHtml(a.coverDraft)+'</textarea></div>'+
@@ -940,6 +954,11 @@ html,body{margin:0;padding:0;background:var(--paper);min-height:100%;width:100%;
         var summaryBlock = data.tailoredSummary ? ('SUMMARY\n'+data.tailoredSummary+'\n\nRESUME BULLETS\n') : '';
         a.tailoredNotes = summaryBlock + bullets;
         a.coverDraft = data.coverLetter || '';
+        a.extracted = {
+          company: data.company||'', role: data.role||'', location: data.location||'',
+          rotational: data.rotational||'', programLength: data.programLength||'',
+          applicationDeadline: data.applicationDeadline||'', jobNumber: data.jobNumber||''
+        };
       }
     }catch(err){
       a.generateError = (err && err.message) ? err.message : 'Could not generate tailored materials. Try again.';
@@ -1012,9 +1031,13 @@ html,body{margin:0;padding:0;background:var(--paper);min-height:100%;width:100%;
       generateAI();
     } else if(action==='save-as-application'){
       var a = state.assist;
+      var ex = a.extracted || {};
       state.editingId = null; state.formError=null;
       state.formDraft = Object.assign(blankDraft(), {
         link: a.link, status:'Applied', dateApplied: todayISO(),
+        company: ex.company||'', role: ex.role||'', location: ex.location||'',
+        rotational: ex.rotational||'', programLength: ex.programLength||'',
+        deadline: ex.applicationDeadline||'', jobNumber: ex.jobNumber||'',
         tailoredResume: a.tailoredNotes||'', coverLetter: a.coverDraft||''
       });
       state.tab='add'; render();
